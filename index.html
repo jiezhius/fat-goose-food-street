@@ -1,0 +1,1727 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#e8e2d6">
+<title>肥鹅美食街</title>
+<style>
+  :root {
+    --paper: #f6f3ec;
+    --ink: #3a3a3a;
+    --ink-soft: #6f6a60;
+    --accent: #c9603f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 50% 20%, #e7e0d1, #c9c0ae);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Xingkai SC", "Hiragino Sans GB", -apple-system, sans-serif;
+    color: var(--ink);
+    user-select: none;
+  }
+  /* 舞台固定 720x1280 逻辑比例，整体等比缩放；子元素一律用 em，跟随 stage 字号缩放 */
+  #stage {
+    position: relative;
+    width: min(100vw, 56.25vh);
+    height: min(177.78vw, 100vh);
+    font-size: min(3.333vw, 1.875vh);
+    box-shadow: 0 1em 3em rgba(60, 50, 35, .35);
+    overflow: hidden;
+  }
+  @supports (height: 100svh) {
+    #stage { width: min(100vw, 56.25svh); height: min(177.78vw, 100svh); font-size: min(3.333vw, 1.875svh); }
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .layer { position: absolute; inset: 0; }
+
+  /* ---------- HUD ---------- */
+  #hud { pointer-events: none; padding: .6em .8em 0; }
+  .hud-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .stat { text-align: center; line-height: 1.05; min-width: 4em; }
+  .stat .label { display: block; font-size: .7em; color: var(--ink-soft); letter-spacing: .05em; }
+  .stat b { font-size: 1.35em; font-weight: 700; }
+  .hud-sub { text-align: center; font-size: .78em; color: var(--ink-soft); margin-top: .1em; height: 1.2em; }
+  .hud-sub.warn { color: var(--accent); font-weight: 700; }
+  .hud-btns { position: absolute; right: .8em; bottom: 1em; display: flex; gap: .4em; pointer-events: auto; }
+  .ibtn {
+    font: inherit; font-size: .85em; line-height: 1;
+    width: 2.2em; height: 2.2em; padding: 0;
+    background: rgba(255,255,255,.55); color: var(--ink);
+    border: .1em solid var(--ink);
+    border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%;
+    cursor: pointer;
+  }
+  .ibtn:active { transform: translateY(.1em); }
+
+  /* ---------- 屏幕 / 弹窗 ---------- */
+  .screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(246, 243, 236, .82);
+    backdrop-filter: blur(2px);
+    text-align: center; padding: 2em;
+  }
+  .screen.hidden { display: none; }
+  .card {
+    background: rgba(255,255,255,.72);
+    border: .12em solid var(--ink);
+    /* 经典“手绘框”圆角把戏：四角半径不对称 */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    padding: 1.6em 1.8em;
+    max-width: 20em;
+    box-shadow: .2em .3em 0 rgba(58,58,58,.12);
+  }
+  h1 { margin: 0 0 .1em; font-size: 2.6em; letter-spacing: .08em; font-weight: 700; }
+  .sub { margin: 0 0 1.2em; font-size: .85em; color: var(--ink-soft); line-height: 1.7; }
+  h2 { margin: 0 0 .3em; font-size: 1.8em; }
+  .lines { font-size: .95em; line-height: 1.9; margin: .6em 0 1.2em; }
+  .lines .big { font-size: 1.6em; font-weight: 700; }
+  .btn {
+    font: inherit; font-size: 1.05em;
+    padding: .5em 1.6em; margin: .25em;
+    background: rgba(255,255,255,.7); color: var(--ink);
+    border: .12em solid var(--ink);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    cursor: pointer;
+  }
+  .btn.primary { background: #f7d9a8; }
+  .btn:active { transform: translate(.06em, .1em); }
+  .btn.small { font-size: .8em; padding: .4em 1em; }
+  .hint { font-size: .75em; color: var(--ink-soft); margin-top: 1em; line-height: 1.7; }
+  #originalWrap { display: none; }
+  #originalWrap.show { display: block; }
+  #originalImg { max-width: 100%; max-height: 60vh; border: .12em solid var(--ink); }
+  .credit { position: absolute; bottom: .8em; left: 0; right: 0; font-size: .7em; color: var(--ink-soft); }
+  @media (prefers-reduced-motion: reduce) { .btn:active, .ibtn:active { transform: none; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="720" height="1280"></canvas>
+
+  <div id="hud" class="layer">
+    <div class="hud-row">
+      <div class="stat"><span class="label" data-i18n="score">分数</span><b id="uiScore">0</b></div>
+      <div class="stat"><span class="label" data-i18n="level">关卡</span><b id="uiLevel">1</b></div>
+      <div class="stat"><span class="label" data-i18n="best">最高分</span><b id="uiBest">0</b></div>
+    </div>
+    <div class="hud-sub" id="uiPush"></div>
+    <div class="hud-btns">
+      <button id="btnSound" class="ibtn" title="sound">🔊</button>
+      <button id="btnLang" class="ibtn" title="language">EN</button>
+      <button id="btnPause" class="ibtn" title="pause">⏸</button>
+    </div>
+  </div>
+
+  <div id="screenTitle" class="layer screen">
+    <div class="card">
+      <h1 data-i18n="title">肥鹅美食街</h1>
+      <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
+      <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
+      <div><button id="btnOriginal" class="btn small" data-i18n="original">看看原作</button></div>
+      <p class="hint" data-i18n="howto">电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射</p>
+    </div>
+    <div class="credit" data-i18n="credit">原作：一位小朋友的手绘</div>
+  </div>
+
+  <div id="screenOriginal" class="layer screen hidden">
+    <div id="originalWrap"><img id="originalImg" alt="原画"></div>
+    <p class="hint" id="originalMissing" data-i18n="missing">把原画照片放到 assets/original-drawing.jpg 就能在这里看到啦。</p>
+    <button id="btnCloseOriginal" class="btn small" data-i18n="back">返 回</button>
+  </div>
+
+  <div id="screenDialog" class="layer screen hidden">
+    <div class="card">
+      <h2 id="dlgTitle">过关啦</h2>
+      <div class="lines" id="dlgBody"></div>
+      <button id="btnMain" class="btn primary">下一关</button>
+      <button id="btnRetry" class="btn">重来</button>
+      <div><button id="btnHome" class="btn small" data-i18n="home">回标题</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   《肥鹅美食街》— 根据一张小朋友的手绘设定图做成的泡泡龙
+   单文件、零依赖、离线可玩。逻辑分辨率 720x1280，全部坐标都在这个空间里。
+   ========================================================================= */
+
+// ==================== 常量 ====================
+const W = 720, H = 1280;
+const R = 40;                       // 食物半径
+const ROW_H = R * Math.sqrt(3);     // 六边形行距 ≈ 69.28
+const GRID_X = 40;                  // 左右留白
+const GRID_Y = 92;                  // 网格顶部
+const COLS_EVEN = 8, COLS_ODD = 7;
+const WALL_L = GRID_X + R, WALL_R = W - GRID_X - R;   // 球心反弹边界 80 / 640
+const DANGER_Y = 838;               // 原画里那条横线：越过就输
+const ORIGIN = { x: 360, y: 900 };  // 小姑娘手里发射点
+const MAX_ANGLE = 78 * Math.PI / 180;
+const SHOT_SPEED = 1500;            // px/s
+const MAX_ROWS = Math.floor((DANGER_Y - GRID_Y - R) / ROW_H) + 1;
+
+// 六种食物，全部取自原画。轮廓和配色都各不相同——
+// 光靠淡彩的深浅根本认不出来，得让形状先说话、颜色再补一刀。
+const TYPES = {
+  o: { key: 'o', color: '#f79020', zh: '橘子',  en: 'Orange' },
+  a: { key: 'a', color: '#e34b3c', zh: '苹果',  en: 'Apple' },
+  w: { key: 'w', color: '#3f9c46', zh: '西瓜',  en: 'Melon' },
+  m: { key: 'm', color: '#8b5a2b', zh: '咖啡',  en: 'Coffee' },
+  j: { key: 'j', color: '#8a54c6', zh: '果汁',  en: 'Juice' },
+  e: { key: 'e', color: '#f2c516', zh: '鹅蛋',  en: 'Egg' },
+  c: { key: 'c', color: '#f9b21e', zh: '小鸡',  en: 'Chick' },
+  f: { key: 'f', color: '#2fb3a8', zh: '小鱼',  en: 'Fish' },
+  p: { key: 'p', color: '#f28ab2', zh: '小猪',  en: 'Piglet' },
+};
+// 一共 9 样，但一关最多上 6 样：每关从这个环上取一段，所以每关的阵容都不一样。
+// 顺序是拿来穿插的——挨着的两样必须一眼分得开，别让一屏全是圆球。
+const TYPE_ORDER = ['w', 'o', 'j', 'a', 'c', 'm', 'f', 'e', 'p'];
+const LEAF = '#5aa84a';             // 叶子和瓜蒂共用的绿
+const PORCELAIN = '#f4eee2';        // 杯子、碟子的白瓷
+const SEED_DARK = '#2f2a25';
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ==================== 文案 ====================
+const I18N = {
+  zh: {
+    title: '肥鹅美食街', tagline: '瞄准、发射，三个一样的就能吃掉！',
+    start: '开 始', original: '看看原作', back: '返 回', home: '回首页',
+    howto: '电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射',
+    credit: '原作：一位小朋友的手绘', missing: '把原画照片放到 assets/original-drawing.jpg 就能在这里看到啦。',
+    score: '分数', level: '关卡', best: '最高分',
+    push: n => `还有 ${n} 发就要上新菜了`, pushSoon: '小心！马上要上新菜',
+    clear: '这条街被你吃光啦！', over: '食物压过线啦',
+    next: '下一关', retry: '重玩本关', again: '再试一次',
+    lvScore: '本关得分', total: '总分', newBest: '新纪录！',
+    paused: '暂停中', resume: '继续玩',
+  },
+  en: {
+    title: 'Fat Goose Food Street', tagline: 'Aim, shoot, match three to eat them up!',
+    start: 'Start', original: 'See the original', back: 'Back', home: 'Title',
+    howto: 'Desktop: move to aim, click to shoot<br>Mobile: hold and drag, release to shoot',
+    credit: 'From a kid’s pencil drawing', missing: 'Drop the photo at assets/original-drawing.jpg to see it here.',
+    score: 'Score', level: 'Level', best: 'Best',
+    push: n => `${n} shots until new food arrives`, pushSoon: 'Watch out! New food incoming',
+    clear: 'You ate the whole street!', over: 'The food crossed the line',
+    next: 'Next level', retry: 'Replay level', again: 'Try again',
+    lvScore: 'Level score', total: 'Total', newBest: 'New best!',
+    paused: 'Paused', resume: 'Resume',
+  },
+};
+
+// ==================== 种子随机 + 手绘笔触 ====================
+// 每个精灵绑定固定 seed，抖动是静态的，逐帧重画也不会满屏乱颤。
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const PENCIL = '#3a3a3a';
+
+function pencil(ctx, width = 2.2, alpha = 0.85, color = PENCIL) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = alpha;
+}
+
+// 沿路径叠画两遍带扰动的线 —— 铅笔反复描边的感觉
+function roughPath(ctx, pts, seed, opt = {}) {
+  const { closed = false, passes = 2, amt = 1.6, width = 2.2, alpha = 0.8, color = PENCIL } = opt;
+  pencil(ctx, width, alpha, color);
+  for (let p = 0; p < passes; p++) {
+    const rnd = mulberry32(seed + p * 977);
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const [x, y] = pts[i];
+      const jx = x + (rnd() - 0.5) * 2 * amt;
+      const jy = y + (rnd() - 0.5) * 2 * amt;
+      if (i === 0) ctx.moveTo(jx, jy); else ctx.lineTo(jx, jy);
+    }
+    if (closed) ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function circlePts(cx, cy, r, n = 26, squash = 1) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * Math.PI * 2;
+    pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * squash]);
+  }
+  return pts;
+}
+
+function roughCircle(ctx, cx, cy, r, seed, opt = {}) {
+  roughPath(ctx, circlePts(cx, cy, r, 26, opt.squash || 1), seed, { ...opt, closed: true });
+}
+
+function roughLine(ctx, x1, y1, x2, y2, seed, opt = {}) {
+  const steps = Math.max(2, Math.round(Math.hypot(x2 - x1, y2 - y1) / 18));
+  const pts = [];
+  for (let i = 0; i <= steps; i++) pts.push([x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps]);
+  roughPath(ctx, pts, seed, opt);
+}
+
+// 淡彩：色块相对轮廓故意偏移 2~4px，小孩涂色出格的感觉——这是风格的灵魂。
+// 默认用正片叠底，两层色叠上去会变深而不是变灰，蜡笔反复涂就是这个效果；
+// 要盖住底下的颜色（比如瓜瓤盖瓜皮）时传 mode='source-over'。
+function washFill(ctx, pts, color, seed, alpha = 0.5, mode = 'multiply', spread = 7) {
+  const rnd = mulberry32(seed + 4231);
+  const dx = (rnd() - 0.5) * spread, dy = (rnd() - 0.5) * spread;
+  ctx.save();
+  ctx.globalCompositeOperation = mode;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => { i ? ctx.lineTo(x + dx, y + dy) : ctx.moveTo(x + dx, y + dy); });
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function washCircle(ctx, cx, cy, r, color, seed, alpha = 0.5, mode = 'multiply', spread = 7) {
+  washFill(ctx, circlePts(cx, cy, r * 0.98, 20), color, seed, alpha, mode, spread);
+}
+
+// 一小片高光，蜡笔画里留白的那一下，东西立刻就"亮"了
+function shine(ctx, x, y, r, alpha = 0.6) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#fffdf3';
+  ctx.beginPath();
+  ctx.ellipse(x, y, r * 0.21, r * 0.13, -0.7, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
+// 一片叶子：橘子、苹果头上那撮绿，也是画面里唯一的第二种绿
+function leaf(ctx, x, y, r, seed, ang = -0.4, len = 0.66) {
+  const L = r * len, wd = r * 0.24, pts = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12, w = Math.sin(t * Math.PI) * wd;
+    pts.push([x + Math.cos(ang) * L * t - Math.sin(ang) * w, y + Math.sin(ang) * L * t + Math.cos(ang) * w]);
+  }
+  for (let i = 12; i >= 0; i--) {
+    const t = i / 12, w = Math.sin(t * Math.PI) * wd;
+    pts.push([x + Math.cos(ang) * L * t + Math.sin(ang) * w, y + Math.sin(ang) * L * t - Math.cos(ang) * w]);
+  }
+  washFill(ctx, pts, LEAF, seed + 61, .62);
+  roughPath(ctx, pts, seed + 62, { closed: true, width: 1.5, passes: 1 });
+  roughLine(ctx, x, y, x + Math.cos(ang) * L * .9, y + Math.sin(ang) * L * .9, seed + 63, { width: 1.1, passes: 1, alpha: .45 });
+}
+
+// 手写字：一个字一个字地摆，各自歪一点、再描一遍毛边，
+// 直接 fillText 一整串会太整齐，看着就不像手写的了。
+function handwrite(ctx, text, x, y, size, seed, opt = {}) {
+  const { rot = 0, color = PENCIL, alpha = .82, gap = 1.06 } = opt;
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(rot);
+  ctx.font = size + 'px "Xingkai SC","Kaiti SC","STKaiti","KaiTi",serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  const rnd = mulberry32(seed), chars = Array.from(text), step = size * gap;
+  chars.forEach((ch, i) => {
+    ctx.save();
+    ctx.translate((i - (chars.length - 1) / 2) * step + (rnd() - .5) * 2.4, (rnd() - .5) * 3.4);
+    ctx.rotate((rnd() - .5) * 0.15);
+    ctx.globalAlpha = alpha;
+    ctx.fillText(ch, 0, 0);
+    ctx.globalAlpha = alpha * .4;
+    ctx.fillText(ch, (rnd() - .5) * 1.6, (rnd() - .5) * 1.6);
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+// 沿脊线按法线偏移出一条平行曲线。offset 可以是常数，也可以是 t => 偏移量。
+// 马尾的轮廓和里面那几绺散发共用这一套法线，所以发绺永远跑不出发束外面。
+function offsetSpine(spine, offset) {
+  const fn = typeof offset === 'function' ? offset : () => offset;
+  return spine.map((p, i) => {
+    const t = i / (spine.length - 1), w = fn(t);
+    const q = spine[Math.min(i + 1, spine.length - 1)], o = spine[Math.max(i - 1, 0)];
+    const dx = q[0] - o[0], dy = q[1] - o[1], d = Math.hypot(dx, dy) || 1;
+    return [p[0] - dy / d * w, p[1] + dx / d * w];
+  });
+}
+
+// 把几个控制点插值成一条平滑曲线（Catmull-Rom）。
+// 点少了，ribbon 的外缘会在转弯处支出折角，一束头发就画成了一块板子。
+function smoothSpine(pts, n = 26) {
+  const at = i => pts[Math.max(0, Math.min(pts.length - 1, i))];
+  const out = [];
+  for (let s = 0; s < n; s++) {
+    const u = s / (n - 1) * (pts.length - 1);
+    const i = Math.min(pts.length - 2, Math.floor(u)), f = u - i;
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    const c = (a, b, cc, d) =>
+      0.5 * (2 * b + (-a + cc) * f + (2 * a - 5 * b + 4 * cc - d) * f * f + (-a + 3 * b - 3 * cc + d) * f * f * f);
+    out.push([c(p0[0], p1[0], p2[0], p3[0]), c(p0[1], p1[1], p2[1], p3[1])]);
+  }
+  return out;
+}
+
+// 把一条脊线加粗成一条带子——马尾、猫尾巴、兔耳朵都用它。
+// 宽度可以给两个数（首尾线性），也可以直接给一条曲线函数。
+function ribbon(spine, w0, w1) {
+  const w = typeof w0 === 'function' ? w0 : t => w0 + (w1 - w0) * t;
+  return offsetSpine(spine, w).concat(offsetSpine(spine, t => -w(t)).reverse());
+}
+
+// ==================== 纸张背景（画一次，之后 drawImage） ====================
+let paperCanvas = null;
+function buildPaper() {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f6f3ec';
+  x.fillRect(0, 0, W, H);
+
+  // 颗粒
+  const img = x.getImageData(0, 0, W, H);
+  const d = img.data;
+  const rnd = mulberry32(20260827);
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (rnd() - 0.5) * 14;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n * 0.8;
+  }
+  x.putImageData(img, 0, 0);
+
+  // 折痕（原画上有两三道折痕）
+  [0.30, 0.60, 0.86].forEach((p, i) => {
+    const y = H * p;
+    const g = x.createLinearGradient(0, y - 10, 0, y + 10);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(0.45, 'rgba(120,110,95,0.10)');
+    g.addColorStop(0.55, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g;
+    x.fillRect(0, y - 10, W, 20);
+    roughLine(x, 0, y, W, y, 700 + i * 31, { width: 1, alpha: 0.06, passes: 1, amt: 2.4 });
+  });
+  paperCanvas = c;
+}
+
+// ==================== 食物精灵（全部来自原画） ====================
+function drawOrange(ctx, x, y, r, seed) {
+  const pts = circlePts(x, y, r * 0.86, 26);
+  washFill(ctx, pts, TYPES.o.color, seed, .62);
+  // 底下再叠一层跟着轮廓缩小的暗面，正片叠底一压就有了圆滚滚的体积
+  washFill(ctx, pts.map(([px, py]) => [x + (px - x) * .82 + r * .15, y + (py - y) * .82 + r * .17]), '#e2650c', seed + 33, .26);
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .34, y - r * .4, r);
+  // 蒂 + 一片叶子
+  roughLine(ctx, x + r * .06, y - r * .82, x + r * .1, y - r * .98, seed + 7, { width: 2, passes: 1 });
+  leaf(ctx, x + r * .1, y - r * .96, r, seed, -0.25, .6);
+  // 笑脸（原画橘子是有表情的）
+  pencil(ctx, 2, .85);
+  ctx.beginPath(); ctx.arc(x - r * .28, y - r * .1, 2.6, 0, 7); ctx.fillStyle = PENCIL; ctx.fill();
+  ctx.beginPath(); ctx.arc(x + r * .22, y - r * .1, 2.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x - r * .03, y + r * .06, r * .38, 0.35, Math.PI - 0.35); ctx.stroke();
+  ctx.globalAlpha = 1;
+  // 两团腮红，跟笑脸配套
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .3; ctx.fillStyle = '#e8564a';
+  ctx.beginPath(); ctx.ellipse(x - r * .46, y + r * .12, r * .13, r * .09, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * .4, y + r * .12, r * .13, r * .09, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+function drawApple(ctx, x, y, r, seed) {
+  const pts = [];
+  const n = 30, base = r * 0.84;
+  for (let i = 0; i <= n; i++) {
+    const a = -Math.PI / 2 + i / n * Math.PI * 2;
+    const dTop = Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2)));
+    const dip = 0.24 * Math.exp(-Math.pow(dTop / 0.45, 2));
+    const bot = 0.07 * Math.exp(-Math.pow((Math.PI - dTop) / 0.7, 2));
+    const rr = base * (1 - dip + bot);
+    pts.push([x + Math.cos(a) * rr * 1.02, y + Math.sin(a) * rr]);
+  }
+  washFill(ctx, pts, TYPES.a.color, seed, .72);
+  // 暗面 = 缩小并往右下挪的同一个轮廓，这样阴影是跟着苹果形状的
+  washFill(ctx, pts.map(([px, py]) => [x + (px - x) * .84 + r * .17, y + (py - y) * .84 + r * .15]), '#a8201a', seed + 31, .24);
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .32, y - r * .3, r * 1.15);
+  roughLine(ctx, x, y - r * .62, x + r * .12, y - r * .98, seed + 3, { width: 2.4, passes: 1, color: '#6b4a2a' });
+  leaf(ctx, x + r * .11, y - r * .93, r, seed + 5, -0.15, .55);
+}
+
+function drawMelon(ctx, x, y, r, seed) {
+  // 原画里西瓜是整个的，但一屋子圆球实在分不出来——改成切开的一角，
+  // 绿皮 + 白边 + 红瓤 + 黑籽，四种颜色，隔着半个屏幕也认得出。
+  const top = y - r * .36, rr = r * .95;
+  const half = rad => {
+    const p = [];
+    for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI; p.push([x + Math.cos(a) * rad, top + Math.sin(a) * rad]); }
+    return p;
+  };
+  const rind = half(rr);
+  washFill(ctx, rind, TYPES.w.color, seed, .72, 'source-over');            // 绿皮
+  washFill(ctx, half(rr * .84), '#f6f1df', seed + 21, .95, 'source-over'); // 白边
+  const flesh = half(rr * .76);
+  washFill(ctx, flesh, '#e8434f', seed + 22, .82, 'source-over');          // 红瓤
+  roughPath(ctx, flesh, seed + 23, { closed: true, width: 1.5, passes: 1, alpha: .5 });
+  roughPath(ctx, rind, seed, { closed: true });
+  // 皮上的深绿条纹
+  for (let s2 = -1; s2 <= 1; s2++) {
+    const a = Math.PI / 2 + s2 * 0.62;
+    roughLine(ctx, x + Math.cos(a) * rr * .86, top + Math.sin(a) * rr * .86,
+              x + Math.cos(a) * rr, top + Math.sin(a) * rr, seed + 30 + s2, { width: 3, passes: 1, alpha: .55, color: '#1f6b2a' });
+  }
+  // 黑籽
+  const rnd = mulberry32(seed + 77);
+  ctx.save(); ctx.fillStyle = SEED_DARK; ctx.globalAlpha = .85;
+  for (let i = 0; i < 5; i++) {
+    const a = 0.5 + rnd() * (Math.PI - 1), d = (0.3 + rnd() * 0.4) * rr;
+    ctx.save();
+    ctx.translate(x + Math.cos(a) * d, top + Math.sin(a) * d);
+    ctx.rotate(a - Math.PI / 2);
+    ctx.beginPath(); ctx.ellipse(0, 0, r * .05, r * .085, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawMug(ctx, x, y, r, seed) {
+  const bx = x - r * .5, by = y - r * .52, bw = r * .9, bh = r * .9;
+  const body = [[bx, by], [bx + bw, by], [bx + bw * .9, by + bh], [bx + bw * .1, by + bh]];
+  // 碟子先画，压在杯子底下
+  const saucer = [[x - r * .8, y + r * .38], [x + r * .8, y + r * .38], [x + r * .58, y + r * .6], [x - r * .58, y + r * .6]];
+  washFill(ctx, saucer, '#cddaea', seed + 27, .7, 'source-over');
+  roughPath(ctx, saucer, seed + 28, { closed: true, width: 2 });
+  // 白瓷杯身
+  washFill(ctx, body, PORCELAIN, seed, .95, 'source-over');
+  // 杯口那一圈黑咖啡——整个画面唯一的深棕，一眼就知道是杯子
+  const cof = [[bx + 3, by + 3], [bx + bw - 3, by + 3], [bx + bw - 5, by + bh * .3], [bx + 5, by + bh * .3]];
+  washFill(ctx, cof, TYPES.m.color, seed + 3, .85, 'source-over');
+  roughPath(ctx, body, seed, { closed: true });
+  roughLine(ctx, bx + 2, by + bh * .3, bx + bw - 2, by + bh * .3, seed + 13, { width: 1.6, passes: 1, alpha: .7 });
+  // 杯身上一道红条纹
+  roughLine(ctx, bx + 4, by + bh * .58, bx + bw - 4, by + bh * .58, seed + 14, { width: 3.4, passes: 1, alpha: .5, color: '#d9534a' });
+  shine(ctx, bx + bw * .22, by + bh * .72, r * 1.1, .7);
+  // 把手
+  const handle = [];
+  for (let i = 0; i <= 10; i++) {
+    const a = -Math.PI / 2 + i / 10 * Math.PI;
+    handle.push([bx + bw + Math.cos(a) * r * .28, by + bh * .45 + Math.sin(a) * r * .28]);
+  }
+  roughPath(ctx, handle, seed + 9, { width: 2.4, passes: 1 });
+  // 热气
+  for (let s2 = -1; s2 <= 1; s2 += 2) {
+    const st = [];
+    for (let i = 0; i <= 6; i++) st.push([x + s2 * r * .22 + Math.sin(i * 1.5) * r * .1, by - r * .08 - i * r * .085]);
+    roughPath(ctx, st, seed + 17 + s2, { width: 1.5, passes: 1, alpha: .45, color: '#7d8fa3' });
+  }
+}
+
+function drawJuice(ctx, x, y, r, seed) {
+  const tw = r * .72, bw = r * .48, top = y - r * .5, bot = y + r * .6;
+  const wAt = yy => tw + (bw - tw) * ((yy - top) / (bot - top));
+  const cup = [[x - tw, top], [x + tw, top], [x + bw, bot], [x - bw, bot]];
+  washFill(ctx, cup, '#eaf3f8', seed + 1, .8, 'source-over');            // 玻璃杯
+  // 葡萄汁：紫色是这张画里独一份的颜色
+  const jt = top + r * .18, jw = wAt(jt);
+  washFill(ctx, [[x - jw, jt], [x + jw, jt], [x + bw, bot], [x - bw, bot]], TYPES.j.color, seed, .78, 'source-over');
+  roughPath(ctx, cup, seed, { closed: true });
+  roughLine(ctx, x - jw, jt, x + jw, jt, seed + 2, { width: 1.8, passes: 1, alpha: .6 });
+  shine(ctx, x - tw * .62, jt + r * .26, r * 1.15, .55);
+  // 红白条纹吸管
+  const s0 = [x + r * .26, jt - r * .02], s1 = [x + r * .56, y - r * 1.06];
+  roughLine(ctx, s0[0], s0[1], s1[0], s1[1], seed + 8, { width: 5, passes: 1, alpha: .85, color: '#f6f1e4' });
+  roughLine(ctx, s0[0], s0[1], s1[0], s1[1], seed + 8, { width: 5, passes: 1, alpha: .9 });
+  for (let i = 0; i < 4; i++) {
+    const t0 = .1 + i * .24, t1 = t0 + .11;
+    roughLine(ctx, s0[0] + (s1[0] - s0[0]) * t0, s0[1] + (s1[1] - s0[1]) * t0,
+              s0[0] + (s1[0] - s0[0]) * t1, s0[1] + (s1[1] - s0[1]) * t1, seed + 40 + i, { width: 4.2, passes: 1, alpha: .85, color: '#e0483c' });
+  }
+  // 杯沿上挂一片橙子
+  const lx = x - tw * .92, ly = top + r * .02;
+  washCircle(ctx, lx, ly, r * .2, '#f79020', seed + 51, .8, 'source-over');
+  roughCircle(ctx, lx, ly, r * .2, seed + 52, { width: 1.6, passes: 1 });
+}
+
+function drawEgg(ctx, x, y, r, seed) {
+  const pts = [];
+  for (let i = 0; i <= 26; i++) {
+    const a = i / 26 * Math.PI * 2;
+    const taper = 1 - 0.13 * Math.cos(a - Math.PI / 2);
+    pts.push([x + Math.cos(a) * r * .66 * taper, y + Math.sin(a) * r * .84]);
+  }
+  washFill(ctx, pts, TYPES.e.color, seed, .58);
+  washFill(ctx, pts.map(([px, py]) => [px + r * .12, py + r * .14]), '#d9a013', seed + 31, .26);  // 暗面
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .2, y - r * .38, r * 1.2);
+  // 花斑点：橘、红、棕换着来，比原来一色的铅笔点子活泼
+  const rnd = mulberry32(seed + 91);
+  const dots = ['#c9622a', '#d84a3e', '#7a4a1f'];
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .65;
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = dots[i % dots.length];
+    ctx.beginPath();
+    ctx.ellipse(x + (rnd() - .5) * r * .8, y + (rnd() - .5) * r * 1.15, 1.6 + rnd() * 2.2, 1.4 + rnd() * 1.8, rnd() * 3, 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---- 街上新来的三只小动物，画法跟食物保持一路：铅笔线稿 + 淡彩 ----
+
+function drawChick(ctx, x, y, r, seed) {
+  const body = circlePts(x, y + r * .06, r * .74, 24, 1.02);
+  washFill(ctx, body, TYPES.c.color, seed, .66);
+  washFill(ctx, body.map(([px, py]) => [x + (px - x) * .8 + r * .16, y + (py - y) * .8 + r * .18]), '#e08a0c', seed + 31, .24);
+  roughPath(ctx, body, seed, { closed: true });
+  shine(ctx, x - r * .28, y - r * .3, r * 1.1);
+  // 头顶那撮呆毛
+  roughPath(ctx, [[x - r * .1, y - r * .68], [x - r * .04, y - r * .95], [x + r * .12, y - r * .78]], seed + 3, { width: 1.8, passes: 1 });
+  // 橘红的尖嘴
+  const beak = [[x + r * .5, y - r * .06], [x + r * .86, y + r * .04], [x + r * .5, y + r * .16]];
+  washFill(ctx, beak, '#ef7a1a', seed + 5, .85, 'source-over');
+  roughPath(ctx, beak, seed + 6, { closed: true, width: 1.6, passes: 1 });
+  // 眼睛 + 腮红
+  ctx.beginPath(); ctx.arc(x + r * .22, y - r * .16, 3, 0, 7); ctx.fillStyle = PENCIL; ctx.fill();
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .3; ctx.fillStyle = '#e8564a';
+  ctx.beginPath(); ctx.ellipse(x + r * .06, y + r * .1, r * .12, r * .08, 0, 0, 7); ctx.fill();
+  ctx.restore();
+  // 翅膀
+  roughPath(ctx, [[x - r * .34, y - r * .04], [x - r * .04, y + r * .1], [x - r * .3, y + r * .3]], seed + 8, { width: 1.6, passes: 1, alpha: .8 });
+  // 两条细腿
+  for (let i = -1; i <= 1; i += 2) {
+    roughLine(ctx, x + i * r * .18, y + r * .74, x + i * r * .2, y + r * .94, seed + 12 + i, { width: 1.8, passes: 1, color: '#ef7a1a' });
+    roughLine(ctx, x + i * r * .2, y + r * .94, x + i * r * .34, y + r * .98, seed + 14 + i, { width: 1.6, passes: 1, color: '#ef7a1a' });
+  }
+}
+
+function drawFish(ctx, x, y, r, seed) {
+  const body = circlePts(x - r * .08, y, r * .72, 26, 0.74);
+  washFill(ctx, body, TYPES.f.color, seed, .66);
+  washFill(ctx, body.map(([px, py]) => [x - r * .08 + (px - x + r * .08) * .8, y + (py - y) * .8 + r * .18]), '#127a72', seed + 31, .26);
+  // 尾巴
+  const tail = [[x + r * .5, y], [x + r * .92, y - r * .38], [x + r * .84, y], [x + r * .92, y + r * .38]];
+  washFill(ctx, tail, TYPES.f.color, seed + 2, .7);
+  roughPath(ctx, tail, seed + 3, { closed: true, width: 1.8, passes: 1 });
+  roughPath(ctx, body, seed, { closed: true });
+  shine(ctx, x - r * .34, y - r * .22, r * 1.1);
+  // 背鳍
+  const fin = [[x - r * .2, y - r * .5], [x + r * .04, y - r * .82], [x + r * .2, y - r * .44]];
+  washFill(ctx, fin, '#f7a520', seed + 4, .7, 'source-over');
+  roughPath(ctx, fin, seed + 5, { closed: true, width: 1.5, passes: 1 });
+  // 眼睛 + 鳃 + 两道鳞纹
+  ctx.beginPath(); ctx.arc(x - r * .46, y - r * .1, 3.2, 0, 7); ctx.fillStyle = PENCIL; ctx.fill();
+  roughPath(ctx, [[x - r * .24, y - r * .38], [x - r * .34, y], [x - r * .24, y + r * .36]], seed + 7, { width: 1.5, passes: 1, alpha: .7 });
+  for (let i = 0; i < 2; i++) {
+    roughPath(ctx, [[x + r * .04 + i * r * .2, y - r * .34], [x - r * .04 + i * r * .2, y], [x + r * .04 + i * r * .2, y + r * .34]], seed + 9 + i, { width: 1.3, passes: 1, alpha: .5 });
+  }
+}
+
+function drawPig(ctx, x, y, r, seed) {
+  // 耳朵先画，压在脸底下
+  for (let i = -1; i <= 1; i += 2) {
+    const ear = [[x + i * r * .3, y - r * .58], [x + i * r * .62, y - r * .9], [x + i * r * .66, y - r * .44]];
+    washFill(ctx, ear, '#e2739f', seed + 20 + i, .7);
+    roughPath(ctx, ear, seed + 22 + i, { closed: true, width: 1.7, passes: 1 });
+  }
+  const face = circlePts(x, y, r * .74, 24);
+  washFill(ctx, face, TYPES.p.color, seed, .68);
+  washFill(ctx, face.map(([px, py]) => [x + (px - x) * .8 + r * .16, y + (py - y) * .8 + r * .18]), '#d15f89', seed + 31, .22);
+  roughPath(ctx, face, seed, { closed: true });
+  shine(ctx, x - r * .3, y - r * .34, r * 1.1);
+  // 猪鼻子：这张脸全靠它认
+  const snout = circlePts(x, y + r * .18, r * .3, 20, 0.8);
+  washFill(ctx, snout, '#e2739f', seed + 6, .8, 'source-over');
+  roughPath(ctx, snout, seed + 7, { closed: true, width: 1.7, passes: 1 });
+  ctx.fillStyle = PENCIL; ctx.globalAlpha = .8;
+  for (let i = -1; i <= 1; i += 2) { ctx.beginPath(); ctx.ellipse(x + i * r * .1, y + r * .18, 1.8, 2.8, 0, 0, 7); ctx.fill(); }
+  // 眯眯眼
+  pencil(ctx, 2, .85);
+  for (let i = -1; i <= 1; i += 2) {
+    ctx.beginPath(); ctx.arc(x + i * r * .3, y - r * .22, r * .13, Math.PI + .5, -0.5); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+const DRAWERS = { o: drawOrange, a: drawApple, w: drawMelon, m: drawMug, j: drawJuice, e: drawEgg, c: drawChick, f: drawFish, p: drawPig };
+function drawFood(ctx, type, x, y, r, seed) {
+  (DRAWERS[type] || drawOrange)(ctx, x, y, r, seed);
+}
+
+// ==================== 小姑娘（背影，举着手） ====================
+// 出手那一下的节奏：甩出去 -> 冲过头 -> 弹回来一点 -> 站定。
+// 曲线两头都归零，所以不发射的时候她纹丝不动。
+function throwCurve(p) {
+  if (p <= 0 || p >= 1) return 0;
+  return Math.sin(p * Math.PI * 1.6) * Math.pow(1 - p, 1.3) * 1.25;
+}
+
+// 全身的位移和倾斜。手里那颗食物也要套同一个变换，才跟得上手。
+function girlTransform(ctx, aim, recoil) {
+  const p = 1 - Math.min(1, Math.max(0, recoil));
+  const k = recoil > 0 ? throwCurve(p) : 0;
+  const dir = { x: Math.sin(aim), y: -Math.cos(aim) };
+  ctx.translate(dir.x * k * 9, -Math.max(0, k) * 12);         // 顺着出手方向带一点 + 轻轻一颠
+  ctx.translate(360, 1250);
+  ctx.rotate(k * (0.025 + dir.x * 0.072));                    // 往瞄准那边压肩
+  ctx.translate(-360, -1250);
+  return k;
+}
+
+// 一只小手，就三条线。手在屏幕上不到 20px，画轮廓、填肉色都只会糊成一个团；
+// 小孩画手也就是在胳膊末端划拉三下，那三下反而最像手。别再往上加结构了。
+function drawHand(ctx, x, y, ang, seed, s = 1) {
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s);
+  [[-0.52, 12], [0, 14], [0.52, 12]].forEach(([a, len], n) =>
+    roughLine(ctx, 0, 0, Math.cos(a) * len, Math.sin(a) * len, seed + n * 7, { width: 2.2, passes: 1, amt: 0.5 }));
+  ctx.restore();
+}
+
+function drawGirl(ctx, aim, recoil) {
+  const S = 100;                       // 稳定 seed，别让她每帧抖
+  const dir = { x: Math.sin(aim), y: -Math.cos(aim) };
+  ctx.save();
+  const k = girlTransform(ctx, aim, recoil);
+  // 手要托在食物下面一点，离发射点太近会被食物整个盖住
+  const hand = { x: ORIGIN.x - dir.x * (40 - k * 26), y: ORIGIN.y - dir.y * (40 - k * 26) };
+  // 头偏在中线左边，举起的手臂伸到中线——跟原画的构图一致
+  const headX = 282, headY = 1032, headR = 48;
+  const shR = { x: 320, y: 1086 }, shL = { x: 244, y: 1086 };
+  const sw = k * 13;                   // 甩出去时裙摆和身子往那边带
+
+  // ---- 粉裙子先画，胳膊压在裙子上面，不然手会被裙子盖掉 ----
+  const body = [[shL.x - 6, shR.y - 8], [shR.x + 6, shR.y - 8], [344 + sw, 1180], [372 + sw * 1.7, 1256], [190 + sw * 1.7, 1256], [220 + sw, 1180]];
+  washFill(ctx, body, '#f4a0bd', S, .5);
+  // 裙摆再压一道深粉，裙子就不是一块平板了
+  washFill(ctx, [[220 + sw, 1180], [344 + sw, 1180], [372 + sw * 1.7, 1256], [190 + sw * 1.7, 1256]], '#e2739f', S + 30, .22);
+  roughPath(ctx, body, S + 5, { closed: true, width: 2.6 });
+  roughLine(ctx, 222 + sw, 1178, 342 + sw, 1178, S + 6, { width: 1.8, passes: 1, alpha: .55 });
+  // 裙子上写的那个"筱"
+  handwrite(ctx, '筱', 281 + sw * 1.2, 1220, 36, S + 40, { rot: k * 0.05 - 0.03, alpha: .72 });
+  // 腿（原画里被纸边切掉了，这里也让它走出画面）
+  roughLine(ctx, 258 + sw, 1256, 254 + sw, 1280, S + 11, { width: 2.4, passes: 1 });
+  roughLine(ctx, 306 + sw, 1256, 310 + sw, 1280, S + 12, { width: 2.4, passes: 1 });
+
+  // ---- 两条胳膊 ----
+  // 举起的右臂：肩 -> 肘（往外撇开，绕过脑袋）-> 手
+  const elbow = { x: shR.x + 34 + k * 20, y: (shR.y + hand.y) / 2 + 10 - k * 15 };
+  roughPath(ctx, [[shR.x, shR.y], [elbow.x, elbow.y], [hand.x, hand.y]], S + 1, { width: 2.6 });
+  drawHand(ctx, hand.x, hand.y, Math.atan2(hand.y - elbow.y, hand.x - elbow.x), S + 2, 1);
+  // 垂下的左臂：往反方向摆一下配平，人才不像根木头
+  const lw = { x: 206 - k * 24, y: 1188 - k * 9 };
+  roughPath(ctx, [[shL.x, shL.y], [218 - k * 15, 1146], [lw.x, lw.y]], S + 3, { width: 2.6 });
+  drawHand(ctx, lw.x - 2, lw.y + 13, Math.PI / 2 + k * 0.3, S + 4, 1);
+
+  // ---- 头：先画轮廓和涂黑的头发，马尾压在它上面 ----
+  const headPts = circlePts(headX, headY, headR, 26);
+  roughPath(ctx, headPts, S + 7, { closed: true, width: 2.6 });
+  ctx.save();
+  ctx.beginPath(); headPts.forEach(([px, py], idx) => idx ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.clip();
+  const rnd = mulberry32(S + 8);
+  // 多个方向的密集涂抹，读起来才是"涂黑的头发"而不是条纹球
+  for (let pass = 0; pass < 3; pass++) {
+    const ang = -0.9 + pass * 0.7;
+    pencil(ctx, 3.4, .3);
+    for (let i2 = 0; i2 < 34; i2++) {
+      const t = -headR * 1.5 + rnd() * headR * 3;
+      const ox = Math.cos(ang) * headR * 1.6, oy = Math.sin(ang) * headR * 1.6;
+      const px = headX - Math.sin(ang) * t, py = headY + Math.cos(ang) * t;
+      ctx.beginPath();
+      ctx.moveTo(px - ox, py - oy);
+      ctx.quadraticCurveTo(px + (rnd() - .5) * 14, py + (rnd() - .5) * 14, px + ox, py + oy);
+      ctx.stroke();
+    }
+  }
+  // 再叠一遍"往上梳"的走向：从下半圈起笔，全都收进头顶发绳那一点。
+  // 少了这一遍，头就只是一颗涂黑的球，看不出头发是被拢上去扎起来的。
+  const tieX = 268, tieY = 1020;
+  pencil(ctx, 2.4, .22);
+  for (let i2 = 0; i2 < 22; i2++) {
+    const a = 0.35 + i2 / 21 * 2.45;
+    ctx.beginPath();
+    ctx.moveTo(headX + Math.cos(a) * headR * 1.02, headY + Math.sin(a) * headR * 1.02);
+    ctx.quadraticCurveTo(headX + (rnd() - .5) * 26, headY - headR * .3, tieX, tieY + 6);
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+
+  // ---- 马尾：发绳扎在后脑勺上，发束探出头顶一点点就翻下来，贴着左边垂到肩线以下 ----
+  // 发梢往左是有讲究的：右臂是举起来的，往右会跟胳膊打架，往左还能跟右臂形成对角平衡。
+  const ctrl = [[0, 0], [4, -14], [-2, -26], [-14, -30], [-28, -26], [-38, -8], [-40, 20], [-42, 58], [-46, 90], [-52, 108]]
+    .map(([ox, oy], idx) => {
+      const t = idx / 9, lag = Math.pow(t, 1.6);       // 发绳几乎不动，越靠发梢甩得越开
+      return [tieX + ox - k * 20 * lag, tieY + oy - Math.max(0, k) * 12 * lag];
+    });
+  const spine = smoothSpine(ctrl, 26);
+  // 发绳处最细 -> 头顶上方鼓到最粗 -> 一路收成尖。一根马尾就是靠这条曲线认出来的。
+  // 前面那段用 smoothstep 慢慢鼓起来：一出发绳就到最粗的话，根部会糊成一块板子。
+  const tailW = t => {
+    const g = Math.min(1, t / 0.3), grow = g * g * (3 - 2 * g);
+    return (6 + 18 * grow) * Math.pow(1 - t, 0.95);
+  };
+  const tail = ribbon(spine, tailW);
+  // 用 source-over 而不是正片叠底：发束是一块平的浅灰，头是有笔触的深灰，
+  // 靠明度和质感分开；叠底只会越叠越黑，跟头糊成一坨。
+  washFill(ctx, tail, '#525252', S + 13, .6, 'source-over');
+  roughPath(ctx, tail, S + 9, { closed: true, width: 2.4 });
+  // 束里的几绺：偏移量跟着当地宽度走，所以根部自然收拢、中段散开、发梢又聚回尖上
+  pencil(ctx, 1.5, .34);
+  [-0.55, -0.2, 0.2, 0.55].forEach(u => {
+    ctx.beginPath();
+    offsetSpine(spine, t => tailW(t) * u).forEach(([px, py], idx) => idx ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
+    ctx.stroke();
+  });
+  // 发梢岔出去的碎发，破掉 ribbon 收口那条平边
+  const tip = spine[spine.length - 1], prev = spine[spine.length - 2];
+  const tdx = tip[0] - prev[0], tdy = tip[1] - prev[1], td = Math.hypot(tdx, tdy) || 1;
+  pencil(ctx, 1.6, .38);
+  [-0.42, -0.05, 0.36].forEach((a, n) => {
+    const ca = Math.cos(a), sa = Math.sin(a), len = 11 + n * 4;
+    ctx.beginPath();
+    ctx.moveTo(tip[0] - tdx / td * 6, tip[1] - tdy / td * 6);
+    ctx.lineTo(tip[0] + (tdx * ca - tdy * sa) / td * len, tip[1] + (tdx * sa + tdy * ca) / td * len);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+
+  // 红头绳最后画，正好压住头顶和发束的接缝
+  const knot = circlePts(tieX, tieY + 1, 10, 16, 0.62);
+  washFill(ctx, knot, '#e0473c', S + 15, .85, 'source-over');
+  roughPath(ctx, knot, S + 16, { closed: true, width: 1.8, passes: 1 });
+  ctx.restore();
+}
+
+// ==================== 小鹅：负责上菜的吉祥物 ====================
+function drawGoose(ctx, x, y, scale, flap, step = 0, seed = 55) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(scale, scale);
+  const body = circlePts(0, 0, 26, 24, 0.82);
+  washFill(ctx, body, '#ffffff', seed, .5, 'source-over');
+  roughPath(ctx, body, seed, { closed: true, width: 2 });
+  roughCircle(ctx, -22, -20, 13, seed + 1, { width: 2 });                       // 头
+  const beak = [[-34, -20], [-46, -16], [-33, -13]];
+  washFill(ctx, beak, '#ef7a1a', seed + 6, .8, 'source-over');                  // 嘴
+  roughPath(ctx, beak, seed + 2, { closed: true, width: 1.8, passes: 1 });
+  ctx.beginPath(); ctx.arc(-25, -23, 2, 0, 7); ctx.fillStyle = PENCIL; ctx.fill();   // 眼
+  const wa = flap * 0.5;
+  roughPath(ctx, [[2, -6], [16 + wa * 8, -14 - wa * 12], [22, 2]], seed + 3, { width: 1.8, passes: 1 });    // 翅膀
+  // 两只脚丫子，走起来的时候反相前后迈
+  const gs = Math.sin(step) * 7;
+  roughPath(ctx, [[-8, 21], [-10 + gs, 30], [-18 + gs, 32]], seed + 4, { width: 1.6, passes: 1, color: '#ef7a1a' });
+  roughPath(ctx, [[6, 21], [4 - gs, 30], [-4 - gs, 32]], seed + 5, { width: 1.6, passes: 1, color: '#ef7a1a' });
+  ctx.restore();
+}
+
+// ==================== 街边看热闹的小动物 ====================
+// 都跟小鹅一个画法：局部坐标系里画好，外面 translate + scale 摆位置。
+// 它们不参与玩法，就是趴在纸角上陪着，会轻轻起伏一下。
+
+function drawCat(ctx, x, y, scale, bob, step = 0, seed = 61) {
+  ctx.save();
+  ctx.translate(x, y + bob * 2); ctx.scale(scale, scale);
+  // 四条腿先画，压在身子底下；走起来前后两条反相
+  const cs = Math.sin(step) * 6;
+  [[-5 + cs, 24], [13 - cs, 24]].forEach(([lx, ly], n) => {
+    const leg = circlePts(lx, ly, 5.5, 12, 0.85);
+    washFill(ctx, leg, '#e0a05e', seed + 30 + n, .55);
+    roughPath(ctx, leg, seed + 32 + n, { closed: true, width: 1.5, passes: 1 });
+  });
+  // 尾巴（先画，压在身子底下）
+  const tl = ribbon([[16, 10], [30, 6], [36, -8], [28, -18]], 4, 2);
+  washFill(ctx, tl, '#e0a05e', seed + 8, .55);
+  roughPath(ctx, tl, seed + 9, { closed: true, width: 1.6, passes: 1 });
+  const body = circlePts(4, 6, 22, 24, 0.92);
+  washFill(ctx, body, '#e0a05e', seed, .55);
+  roughPath(ctx, body, seed + 1, { closed: true, width: 2 });
+  // 耳朵
+  [-1, 1].forEach(i => {
+    const ear = [[-6 + i * 12, -18], [-4 + i * 17, -32], [2 + i * 15, -20]];
+    washFill(ctx, ear, '#e0a05e', seed + 10 + i, .55);
+    roughPath(ctx, ear, seed + 12 + i, { closed: true, width: 1.7, passes: 1 });
+  });
+  const head = circlePts(-2, -14, 16, 22, 0.95);
+  washFill(ctx, head, '#e0a05e', seed + 2, .5);
+  roughPath(ctx, head, seed + 3, { closed: true, width: 2 });
+  // 眼睛、鼻子、胡子
+  ctx.fillStyle = PENCIL; ctx.globalAlpha = .9;
+  [-6, 4].forEach(dx => { ctx.beginPath(); ctx.arc(dx, -16, 2.1, 0, 7); ctx.fill(); });
+  ctx.beginPath(); ctx.moveTo(-3, -11); ctx.lineTo(0, -11); ctx.lineTo(-1.5, -9); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  pencil(ctx, 1.1, .5);
+  [-1, 1].forEach(i => { for (let n = -1; n <= 1; n++) { ctx.beginPath(); ctx.moveTo(i * 5, -11 + n * 2); ctx.lineTo(i * 20, -13 + n * 4); ctx.stroke(); } });
+  ctx.globalAlpha = 1;
+  // 背上两道虎斑
+  [0, 1].forEach(n => roughPath(ctx, [[2 + n * 9, -3], [7 + n * 9, 2], [2 + n * 9, 7]], seed + 20 + n, { width: 1.6, passes: 1, alpha: .5, color: '#a9651f' }));
+  ctx.restore();
+}
+
+function drawRabbit(ctx, x, y, scale, bob, step = 0, seed = 71) {
+  ctx.save();
+  ctx.translate(x, y + bob * 2.4); ctx.scale(scale, scale);
+  // 兔子不走，是蹦：腾空的时候后脚收起来，落地蹬开
+  const tuck = Math.abs(Math.sin(step));
+  [[-10, 25 - tuck * 5], [10, 25 - tuck * 5]].forEach(([lx, ly], n) => {
+    const foot = circlePts(lx, ly, 6, 12, 0.62);
+    washFill(ctx, foot, '#f0e2d4', seed + 30 + n, .75, 'source-over');
+    roughPath(ctx, foot, seed + 32 + n, { closed: true, width: 1.5, passes: 1 });
+  });
+  const body = circlePts(0, 6, 20, 24, 1.02);
+  washFill(ctx, body, '#f0e2d4', seed, .7, 'source-over');
+  roughPath(ctx, body, seed + 1, { closed: true, width: 2 });
+  // 两只长耳朵
+  [-1, 1].forEach(i => {
+    const ear = ribbon([[i * 7, -12], [i * 10, -28], [i * 9, -44]], 6, 3);
+    washFill(ctx, ear, '#f0e2d4', seed + 4 + i, .7, 'source-over');
+    washFill(ctx, ribbon([[i * 7, -14], [i * 9, -28], [i * 9, -40]], 3, 1.4), '#eda6bd', seed + 6 + i, .7, 'source-over');
+    roughPath(ctx, ear, seed + 8 + i, { closed: true, width: 1.7, passes: 1 });
+  });
+  const head = circlePts(0, -10, 14, 22);
+  washFill(ctx, head, '#f0e2d4', seed + 2, .7, 'source-over');
+  roughPath(ctx, head, seed + 3, { closed: true, width: 2 });
+  ctx.fillStyle = PENCIL; ctx.globalAlpha = .9;
+  [-5, 5].forEach(dx => { ctx.beginPath(); ctx.arc(dx, -12, 2.1, 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1;
+  washCircle(ctx, 0, -6, 3, '#eda6bd', seed + 11, .9, 'source-over');   // 粉鼻子
+  washCircle(ctx, -19, 12, 6, '#f0e2d4', seed + 12, .8, 'source-over'); // 小圆尾巴
+  roughCircle(ctx, -19, 12, 6, seed + 13, { width: 1.5, passes: 1 });
+  ctx.restore();
+}
+
+function drawTurtle(ctx, x, y, scale, bob, step = 0, seed = 81) {
+  ctx.save();
+  ctx.translate(x, y + bob * 1.6); ctx.scale(scale, scale);
+  // 四条腿 + 尾巴。爬起来两条腿反相前后倒，幅度小——它是乌龟
+  const ts = Math.sin(step) * 4;
+  [[-18 + ts, 12], [16 - ts, 12]].forEach(([lx, ly], n) => {
+    const leg = circlePts(lx, ly, 7, 14, 0.8);
+    washFill(ctx, leg, '#a8c47a', seed + 20 + n, .7, 'source-over');
+    roughPath(ctx, leg, seed + 22 + n, { closed: true, width: 1.5, passes: 1 });
+  });
+  // 头
+  const head = circlePts(26, -2, 9, 18, 0.9);
+  washFill(ctx, head, '#a8c47a', seed + 2, .8, 'source-over');
+  roughPath(ctx, head, seed + 3, { closed: true, width: 1.8 });
+  ctx.beginPath(); ctx.arc(29, -4, 2, 0, 7); ctx.fillStyle = PENCIL; ctx.fill();
+  // 龟壳
+  const shell = [];
+  for (let i = 0; i <= 20; i++) { const a = Math.PI + i / 20 * Math.PI; shell.push([Math.cos(a) * 24, 8 + Math.sin(a) * 22]); }
+  washFill(ctx, shell, '#7ea45c', seed, .75, 'source-over');
+  roughPath(ctx, shell, seed + 1, { closed: true, width: 2.2 });
+  // 壳上的格子
+  pencil(ctx, 1.4, .55, '#3f6b34');
+  [-12, 0, 12].forEach(dx => { ctx.beginPath(); ctx.moveTo(dx, 8); ctx.lineTo(dx * 1.5, -12); ctx.stroke(); });
+  ctx.beginPath(); ctx.moveTo(-21, -2); ctx.lineTo(21, -2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawLadybug(ctx, x, y, scale, bob, seed = 91) {
+  ctx.save();
+  ctx.translate(x, y + bob * 3); ctx.scale(scale, scale);
+  // 触角
+  pencil(ctx, 1.4, .7);
+  [-1, 1].forEach(i => { ctx.beginPath(); ctx.moveTo(i * 4, -14); ctx.quadraticCurveTo(i * 12, -24, i * 16, -22); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+  const shell = circlePts(0, 0, 17, 22, 0.94);
+  washFill(ctx, shell, '#e0473c', seed, .78, 'source-over');
+  roughPath(ctx, shell, seed + 1, { closed: true, width: 2 });
+  // 头 + 中缝
+  const head = [];
+  for (let i = 0; i <= 14; i++) { const a = Math.PI + i / 14 * Math.PI; head.push([Math.cos(a) * 9, -11 + Math.sin(a) * 8]); }
+  washFill(ctx, head, '#3a3a3a', seed + 2, .85, 'source-over');
+  roughLine(ctx, 0, -12, 0, 16, seed + 3, { width: 1.6, passes: 1 });
+  // 黑点
+  ctx.fillStyle = '#2f2a25'; ctx.globalAlpha = .9;
+  [[-8, -2], [8, -2], [-6, 8], [6, 8]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.arc(dx, dy, 3.2, 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ==================== 小动物轮流出来溜达 ====================
+// 一次只有一只在动：从自己的位置走出去，再原路走回来站好，然后换下一只。
+// 每只的速度和走的距离都不一样，出场顺序每轮重新洗牌。
+// dir = 往哪边走（+1 右 / -1 左）；face = 这只精灵天生朝哪边（0 表示正面朝观众，不用翻）。
+// 路线都是照着躲开粉裙子和右下角那三个按钮量出来的，别随手加长。
+const STROLL_GAP = 0.9;              // 上一只站定到下一只出发之间歇多久
+const STROLL = [
+  { x: 92,  y: 1150, s: 1,   face: -1, dir:  1, dist: 93,  speed: 30, gait: 'walk' },  // 小鹅
+  { x: 54,  y: 1232, s: .62, face: -1, dir:  1, dist: 111, speed: 40, gait: 'walk' },  // 猫
+  { x: 156, y: 1246, s: .56, face:  0, dir: -1, dist: 96,  speed: 55, gait: 'hop'  },  // 兔子
+  { x: 452, y: 1254, s: .58, face:  1, dir:  1, dist: 60,  speed: 12, gait: 'walk' },  // 乌龟
+];
+const stroll = { order: [], i: 0, t: 0 };
+
+function shuffleStroll() {
+  stroll.order = STROLL.map((_, n) => n);
+  for (let n = stroll.order.length - 1; n > 0; n--) {
+    const m = Math.floor(Math.random() * (n + 1));
+    [stroll.order[n], stroll.order[m]] = [stroll.order[m], stroll.order[n]];
+  }
+  stroll.i = 0;
+}
+
+function updateStroll(dt) {
+  if (reduceMotion) return;
+  if (!stroll.order.length) shuffleStroll();
+  stroll.t += dt;
+  const a = STROLL[stroll.order[stroll.i]];
+  if (stroll.t > 2 * a.dist / a.speed) {           // 走出去 + 走回来
+    stroll.i++;
+    if (stroll.i >= stroll.order.length) shuffleStroll();   // 一轮走完，重新洗牌
+    stroll.t = -STROLL_GAP;
+  }
+}
+
+// 这一帧该把第 idx 只画在哪儿：位移、朝向、迈步相位、走路的颠簸/蹦跳的高度
+function strollState(idx) {
+  const idle = { off: 0, flip: 1, step: 0, lift: 0 };
+  if (reduceMotion || !stroll.order.length || stroll.t < 0) return idle;
+  if (stroll.order[stroll.i] !== idx) return idle;
+  const a = STROLL[idx];
+  const u = Math.min(1, stroll.t / (2 * a.dist / a.speed));
+  const out = u < 0.5;
+  const p = out ? u * 2 : (1 - u) * 2;             // 0 -> 1 -> 0，走出去再走回来
+  const step = stroll.t * a.speed / 8;
+  const moveDir = out ? a.dir : -a.dir;
+  return {
+    off: a.dist * p * a.dir,
+    flip: (a.face === 0 || moveDir === a.face) ? 1 : -1,   // 掉头要把精灵镜像过来
+    step,
+    lift: Math.abs(Math.sin(step)) * (a.gait === 'hop' ? 9 : 1.8),
+  };
+}
+
+// ==================== 音效（WebAudio 纯合成，无外部文件） ====================
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, startTime, duration, type = 'sine', volume = 0.14, endFreq = null) {
+  if (state.muted) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type;
+    const t0 = ctx.currentTime + startTime;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t0 + duration);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + duration + 0.02);
+  } catch (e) { /* 音频不可用就静默跳过 */ }
+}
+const sfx = {
+  shoot: () => playTone(300, 0, 0.09, 'triangle', 0.10, 620),
+  stick: () => playTone(220, 0, 0.07, 'square', 0.07),
+  pop: (chain = 0) => {
+    const base = 660 * Math.pow(1.12, Math.min(chain, 6));
+    [0, 0.07, 0.14].forEach((d, i) => playTone(base * (1 + i * 0.25), d, 0.14, 'triangle', 0.11));
+  },
+  drop: () => playTone(500, 0, 0.35, 'sine', 0.09, 120),
+  push: () => playTone(160, 0, 0.22, 'sawtooth', 0.07, 110),
+  win: () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, i * 0.12, 0.2, 'triangle', 0.13)),
+  lose: () => [392, 330, 262].forEach((f, i) => playTone(f, i * 0.16, 0.3, 'sine', 0.12)),
+};
+
+// ==================== 状态 ====================
+const state = {
+  screen: 'title',        // title | playing | paused | dialog
+  lang: 'zh',
+  muted: false,
+  level: 1,
+  score: 0,
+  levelScore: 0,
+  best: 0,
+  grid: [],               // grid[row][col] = {type, seed, pop, shake} | null
+  parity: 0,              // 顶行奇偶：下压插行时翻转，保证各行错位关系不乱
+  types: [],              // 本关使用的类型
+  shotsLeft: 0,
+  pushEvery: 6,
+  aim: 0,
+  current: null,
+  next: null,
+  ball: null,             // 飞行中的球
+  particles: [],
+  fallers: [],
+  recoil: 0,
+  shake: 0,
+  swoosh: null,           // 出手时手边划过的那道弧光
+  heldPop: 1,             // 下一颗食物落进手里时的弹一下
+  time: 0,
+  lastResult: null,
+};
+
+// ==================== 网格工具 ====================
+const colsInRow = row => ((row + state.parity) % 2 === 0 ? COLS_EVEN : COLS_ODD);
+const rowShift = row => ((row + state.parity) % 2 === 0 ? 0 : R);
+const cellX = (row, col) => GRID_X + R + col * 2 * R + rowShift(row);
+const cellY = row => GRID_Y + R + row * ROW_H;
+
+function neighbors(row, col) {
+  const odd = (row + state.parity) % 2 !== 0;
+  const list = odd
+    ? [[row, col - 1], [row, col + 1], [row - 1, col], [row - 1, col + 1], [row + 1, col], [row + 1, col + 1]]
+    : [[row, col - 1], [row, col + 1], [row - 1, col - 1], [row - 1, col], [row + 1, col - 1], [row + 1, col]];
+  return list.filter(([r, c]) => r >= 0 && r < state.grid.length && c >= 0 && c < colsInRow(r));
+}
+
+function forEachCell(fn) {
+  for (let r = 0; r < state.grid.length; r++)
+    for (let c = 0; c < state.grid[r].length; c++)
+      if (state.grid[r][c]) fn(state.grid[r][c], r, c);
+}
+
+function makeRow(row, types, density = 1) {
+  const arr = new Array(colsInRow(row)).fill(null);
+  for (let c = 0; c < arr.length; c++) {
+    if (Math.random() < density) {
+      arr[c] = { type: types[Math.floor(Math.random() * types.length)], seed: Math.floor(Math.random() * 1e6), pop: 0 };
+    }
+  }
+  if (!arr.some(Boolean)) arr[Math.floor(Math.random() * arr.length)] =
+    { type: types[Math.floor(Math.random() * types.length)], seed: Math.floor(Math.random() * 1e6), pop: 0 };
+  return arr;
+}
+
+// 屏幕坐标 -> 最近的空格子（吸附）
+function snapCell(x, y) {
+  let row = Math.round((y - GRID_Y - R) / ROW_H);
+  row = Math.max(0, Math.min(MAX_ROWS + 2, row));
+  while (state.grid.length <= row) state.grid.push(new Array(colsInRow(state.grid.length)).fill(null));
+  const pick = (r, c) => (r >= 0 && r < state.grid.length && c >= 0 && c < colsInRow(r) && !state.grid[r][c]);
+  let bestCell = null, bestD = Infinity;
+  for (let r = Math.max(0, row - 1); r <= row + 1; r++) {
+    if (r >= state.grid.length) { state.grid.push(new Array(colsInRow(state.grid.length)).fill(null)); }
+    for (let c = 0; c < colsInRow(r); c++) {
+      if (!pick(r, c)) continue;
+      // 第 0 行以外必须挨着已有食物，避免凭空悬在半空
+      if (r > 0 && !neighbors(r, c).some(([nr, nc]) => state.grid[nr][nc])) continue;
+      const d = Math.hypot(cellX(r, c) - x, cellY(r) - y);
+      if (d < bestD) { bestD = d; bestCell = [r, c]; }
+    }
+  }
+  return bestCell;
+}
+
+// ==================== 关卡 ====================
+// 每关换一批阵容：在 TYPE_ORDER 这个环上按关数往后挪一格再取一段
+function levelTypes(n, count) {
+  const off = (n - 1) % TYPE_ORDER.length, out = [];
+  for (let i = 0; i < count; i++) out.push(TYPE_ORDER[(off + i) % TYPE_ORDER.length]);
+  return out;
+}
+
+function levelConfig(n) {
+  return {
+    rows: Math.min(8, 5 + Math.floor((n - 1) / 2)),
+    typeCount: Math.min(6, 4 + Math.floor((n - 1) / 2)),
+    pushEvery: Math.max(4, 8 - Math.floor(n / 2)),
+    density: n < 3 ? 0.9 : 1,
+  };
+}
+
+function startLevel(n) {
+  const cfg = levelConfig(n);
+  state.level = n;
+  state.parity = 0;
+  state.types = levelTypes(n, cfg.typeCount);
+  state.grid = [];
+  for (let r = 0; r < cfg.rows; r++) state.grid.push(makeRow(r, state.types, cfg.density));
+  state.pushEvery = cfg.pushEvery;
+  state.shotsLeft = cfg.pushEvery;
+  state.levelScore = 0;
+  state.ball = null;
+  state.particles = [];
+  state.fallers = [];
+  state.aim = 0;
+  state.recoil = 0;
+  state.shake = 0;
+  state.swoosh = null;
+  state.heldPop = 1;
+  state.current = pickType();
+  state.next = pickType();
+  updateHud();
+}
+
+// 只发本关面板上还存在的类型，保证局面永远可解
+function livingTypes() {
+  const set = new Set();
+  forEachCell(cell => set.add(cell.type));
+  return set.size ? [...set] : state.types;
+}
+function pickType() {
+  const pool = livingTypes();
+  return { type: pool[Math.floor(Math.random() * pool.length)], seed: Math.floor(Math.random() * 1e6) };
+}
+
+// ==================== 发射 / 碰撞 ====================
+function shoot() {
+  if (state.screen !== 'playing' || state.ball || state.fallers.length) return;
+  const dir = { x: Math.sin(state.aim), y: -Math.cos(state.aim) };
+  state.ball = { x: ORIGIN.x, y: ORIGIN.y, vx: dir.x * SHOT_SPEED, vy: dir.y * SHOT_SPEED, trail: [], ...state.current };
+  sparkleBurst(ORIGIN.x, ORIGIN.y, TYPES[state.current.type].color, state.aim);
+  state.current = state.next;
+  state.next = pickType();
+  state.recoil = 1;
+  state.heldPop = 0;
+  if (!reduceMotion) state.swoosh = { t: 0, aim: state.aim };
+  sfx.shoot();
+}
+
+function stepBall(dt) {
+  const b = state.ball;
+  if (!b) return;
+  if (!reduceMotion) { b.trail.unshift({ x: b.x, y: b.y }); if (b.trail.length > 7) b.trail.pop(); }
+  const steps = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / (R * 0.4)));
+  const h = dt / steps;
+  for (let s = 0; s < steps; s++) {
+    b.x += b.vx * h; b.y += b.vy * h;
+    if (b.x < WALL_L) { b.x = WALL_L + (WALL_L - b.x); b.vx = Math.abs(b.vx); sfx.stick(); }
+    if (b.x > WALL_R) { b.x = WALL_R - (b.x - WALL_R); b.vx = -Math.abs(b.vx); sfx.stick(); }
+    if (b.y <= GRID_Y + R) { land(b); return; }
+    let hit = false;
+    forEachCell((cell, r, c) => {
+      if (hit) return;
+      if (Math.hypot(cellX(r, c) - b.x, cellY(r) - b.y) < R * 1.82) hit = true;
+    });
+    if (hit) { land(b); return; }
+  }
+}
+
+function land(b) {
+  state.ball = null;
+  const cell = snapCell(b.x, b.y);
+  if (!cell) { afterTurn(); return; }
+  const [r, c] = cell;
+  state.grid[r][c] = { type: b.type, seed: b.seed, pop: 0, born: state.time };
+  sfx.stick();
+  resolve(r, c);
+}
+
+// ==================== 消除 / 掉落 ====================
+function sameCluster(row, col) {
+  const type = state.grid[row][col].type;
+  const seen = new Set([row + ',' + col]);
+  const stack = [[row, col]], out = [[row, col]];
+  while (stack.length) {
+    const [r, c] = stack.pop();
+    for (const [nr, nc] of neighbors(r, c)) {
+      const k = nr + ',' + nc;
+      if (seen.has(k)) continue;
+      const cell = state.grid[nr][nc];
+      if (cell && cell.type === type) { seen.add(k); stack.push([nr, nc]); out.push([nr, nc]); }
+    }
+  }
+  return out;
+}
+
+function floating() {
+  const anchored = new Set();
+  const stack = [];
+  for (let c = 0; c < colsInRow(0); c++) if (state.grid[0] && state.grid[0][c]) { anchored.add('0,' + c); stack.push([0, c]); }
+  while (stack.length) {
+    const [r, c] = stack.pop();
+    for (const [nr, nc] of neighbors(r, c)) {
+      const k = nr + ',' + nc;
+      if (!anchored.has(k) && state.grid[nr][nc]) { anchored.add(k); stack.push([nr, nc]); }
+    }
+  }
+  const loose = [];
+  forEachCell((cell, r, c) => { if (!anchored.has(r + ',' + c)) loose.push([r, c]); });
+  return loose;
+}
+
+function popParticles(x, y, color, n = 10) {
+  if (reduceMotion) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 190;
+    const star = i % 3 === 0;
+    state.particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+      life: 0.5 + Math.random() * 0.4, t: 0,
+      color: star ? '#ffdf6b' : color, r: 2 + Math.random() * 4,
+      star, rot: Math.random() * 6.28, vr: (Math.random() - .5) * 12,
+    });
+  }
+}
+
+// 出手时手边炸开的一小把亮片，大致顺着球飞出去的方向散
+function sparkleBurst(x, y, color, aim, n = 18) {
+  if (reduceMotion) return;
+  for (let i = 0; i < n; i++) {
+    const a = aim - Math.PI / 2 + (Math.random() - .5) * 2.3;
+    const sp = 110 + Math.random() * 280;
+    state.particles.push({
+      x: x + (Math.random() - .5) * 26, y: y + (Math.random() - .5) * 26,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      life: .32 + Math.random() * .38, t: 0,
+      color: Math.random() < .5 ? '#ffd94a' : color,
+      r: 4 + Math.random() * 6, star: true,
+      rot: Math.random() * 6.28, vr: (Math.random() - .5) * 16, g: 240,
+    });
+  }
+}
+
+function resolve(row, col) {
+  const cluster = sameCluster(row, col);
+  if (cluster.length < 3) { afterTurn(); return; }
+
+  state.chain = (state.chain || 0) + 1;
+  const mult = Math.min(5, state.chain);
+  cluster.forEach(([r, c]) => {
+    const cell = state.grid[r][c];
+    popParticles(cellX(r, c), cellY(r), TYPES[cell.type].color, 9);
+    state.grid[r][c] = null;
+  });
+  addScore(cluster.length * 10 * mult);
+  sfx.pop(cluster.length - 3);
+  if (!reduceMotion) state.shake = Math.min(10, 3 + cluster.length);
+
+  const loose = floating();
+  if (loose.length) {
+    loose.forEach(([r, c], i) => {
+      const cell = state.grid[r][c];
+      state.fallers.push({ x: cellX(r, c), y: cellY(r), vx: (Math.random() - .5) * 90, vy: -60 - Math.random() * 60, rot: 0, vr: (Math.random() - .5) * 6, type: cell.type, seed: cell.seed });
+      state.grid[r][c] = null;
+    });
+    addScore(loose.length * 20);
+    sfx.drop();
+  }
+  // 掉落还在飞的时候不判定，等 update 里 fallers 落完再 afterTurn
+  state.pendingTurn = true;
+  if (!state.fallers.length) { state.pendingTurn = false; afterTurn(); }
+}
+
+function addScore(n) {
+  state.score += n;
+  state.levelScore += n;
+  if (state.score > state.best) { state.best = state.score; save('best', state.best); }
+  updateHud();
+}
+
+function afterTurn() {
+  state.chain = 0;
+  while (state.grid.length && state.grid[state.grid.length - 1].every(c => !c)) state.grid.pop();
+  // 清完了？
+  let any = false;
+  forEachCell(() => { any = true; });
+  if (!any) { levelClear(); return; }
+
+  state.shotsLeft--;
+  if (state.shotsLeft <= 0) pushDown();
+  if (checkLose()) return;
+  // 手里的球可能是已经消失的类型，换成还在场上的
+  const pool = livingTypes();
+  if (!pool.includes(state.current.type)) state.current = pickType();
+  if (!pool.includes(state.next.type)) state.next = pickType();
+  updateHud();
+}
+
+function pushDown() {
+  state.parity ^= 1;                                   // 顶部插一行 -> 全体行奇偶翻转
+  state.grid.unshift(makeRow(0, state.types, 1));
+  state.shotsLeft = state.pushEvery;
+  sfx.push();
+  if (!reduceMotion) state.shake = 8;
+}
+
+function checkLose() {
+  let dead = false;
+  forEachCell((cell, r) => { if (cellY(r) + R > DANGER_Y) dead = true; });
+  if (dead) { gameOver(); return true; }
+  return false;
+}
+
+// ==================== 渲染 ====================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+function fitCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function aimPath() {
+  let x = ORIGIN.x, y = ORIGIN.y;
+  let dx = Math.sin(state.aim), dy = -Math.cos(state.aim);
+  const pts = [[x, y]];
+  let bounces = 0;
+  for (let i = 0; i < 500; i++) {
+    x += dx * 9; y += dy * 9;
+    if (x < WALL_L) { x = WALL_L; dx = -dx; bounces++; pts.push([x, y]); }
+    else if (x > WALL_R) { x = WALL_R; dx = -dx; bounces++; pts.push([x, y]); }
+    if (y <= GRID_Y + R) break;
+    let hit = false;
+    forEachCell((cell, r, c) => { if (!hit && Math.hypot(cellX(r, c) - x, cellY(r) - y) < R * 1.82) hit = true; });
+    if (hit || bounces > 2) break;
+  }
+  pts.push([x, y]);
+  return pts;
+}
+
+function drawAim() {
+  const pts = aimPath();
+  // 虚线从手里那个食物的外沿开始画，别从果子中间穿出来
+  pts[0] = [ORIGIN.x + Math.sin(state.aim) * (R + 8), ORIGIN.y - Math.cos(state.aim) * (R + 8)];
+  ctx.save();
+  ctx.setLineDash([9, 11]);
+  pencil(ctx, 2, .42);
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // 落点小圈 + 原画里的箭头尖
+  const [ex, ey] = pts[pts.length - 1];
+  roughCircle(ctx, ex, ey, 9, 321, { width: 1.8, alpha: .45, passes: 1 });
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawDangerLine() {
+  let close = false;
+  forEachCell((cell, r) => { if (cellY(r) + R > DANGER_Y - ROW_H * 1.2) close = true; });
+  const wobble = close && !reduceMotion ? Math.sin(state.time * 14) * 2 : 0;
+  roughLine(ctx, 24, DANGER_Y + wobble, W - 24, DANGER_Y - wobble, 909,
+    { width: close ? 3 : 2, alpha: close ? .85 : .5, color: close ? '#c9603f' : PENCIL });
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(paperCanvas, 0, 0);
+  ctx.save();
+  if (state.shake > 0.2) {
+    ctx.translate((Math.random() - .5) * state.shake, (Math.random() - .5) * state.shake);
+  }
+
+  drawDangerLine();
+
+  // 网格上的食物
+  forEachCell((cell, r, c) => {
+    const x = cellX(r, c), y = cellY(r);
+    if (y < -R || y > H + R) return;
+    let s = 1;
+    if (cell.born !== undefined) {
+      const age = state.time - cell.born;
+      if (age < 0.3) s = 1 + Math.sin(Math.min(1, age / 0.3) * Math.PI) * 0.18;
+    }
+    if (s !== 1) { ctx.save(); ctx.translate(x, y); ctx.scale(s, s); drawFood(ctx, cell.type, 0, 0, R, cell.seed); ctx.restore(); }
+    else drawFood(ctx, cell.type, x, y, R, cell.seed);
+  });
+
+  // 掉落中的食物
+  state.fallers.forEach(f => {
+    ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot);
+    drawFood(ctx, f.type, 0, 0, R, f.seed);
+    ctx.restore();
+  });
+
+  // 溅出来的水彩点和亮片
+  state.particles.forEach(p => {
+    const a = Math.max(0, 1 - p.t / p.life);
+    ctx.globalAlpha = a * (p.star ? .95 : .7);
+    ctx.fillStyle = p.color;
+    if (p.star) {
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      const r1 = p.r * (0.4 + a * 0.6), r2 = r1 * .32;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const ang = i / 8 * Math.PI * 2, rad = i % 2 ? r2 : r1;
+        const px = Math.cos(ang) * rad, py = Math.sin(ang) * rad;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  if (state.screen === 'playing' && !state.ball && !state.fallers.length) drawAim();
+  if (state.ball) {
+    // 拖尾：越靠后越小越淡
+    state.ball.trail.forEach((t, i) => {
+      const f = 1 - i / state.ball.trail.length;
+      ctx.globalAlpha = f * .22;
+      ctx.fillStyle = TYPES[state.ball.type].color;
+      ctx.beginPath(); ctx.arc(t.x, t.y, R * .5 * f, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    drawFood(ctx, state.ball.type, state.ball.x, state.ball.y, R, state.ball.seed);
+  }
+
+  // 出手的弧光，划一下就没
+  if (state.swoosh && state.swoosh.t < 0.3) {
+    const u = state.swoosh.t / 0.3;
+    ctx.save();
+    ctx.translate(ORIGIN.x, ORIGIN.y); ctx.rotate(state.swoosh.aim);
+    pencil(ctx, 4.6 * (1 - u) + 0.8, (1 - u) * 0.7, '#f7a520');
+    ctx.beginPath(); ctx.arc(0, 0, 26 + u * 58, -Math.PI * 0.82, -Math.PI * 0.18); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // 手里的下一颗先画，小姑娘压在它上面——三条手指线要搭在食物下缘上才像捏着。
+  // 胳膊本来就在食物下方，不会跟着盖过去。
+  if (!state.ball && state.current) {
+    ctx.save();
+    girlTransform(ctx, state.aim, state.recoil);
+    const t = state.heldPop, pop = 1 + 1.9 * Math.pow(t - 1, 3) + 0.9 * Math.pow(t - 1, 2);
+    ctx.translate(ORIGIN.x, ORIGIN.y); ctx.scale(pop, pop);
+    drawFood(ctx, state.current.type, 0, 0, R, state.current.seed);
+    ctx.restore();
+  }
+  drawGirl(ctx, state.aim, state.recoil);
+
+  // 她自己写在旁边的一句话
+  handwrite(ctx, '世界第一漂', 542, 1116, 30, 4242, { rot: -0.09, alpha: .6 });
+  roughPath(ctx, [[452, 1146], [490, 1140], [530, 1148], [572, 1140], [612, 1147]], 4243, { width: 1.6, passes: 1, alpha: .35 });
+
+  // 街边看热闹的小动物：站着的时候各自用不同频率轻轻起伏，别整齐划一地一起动
+  const bob = f => reduceMotion ? 0 : Math.sin(state.time * f);
+  const flap = state.screen === 'dialog' && state.lastResult === 'win' ? (Math.sin(state.time * 12) + 1) / 2
+             : state.recoil > 0 ? (Math.sin(state.time * 30) + 1) / 2 * state.recoil : 0;
+  // 轮到谁散步，谁就带着位移和迈步相位画；其余的原地站着
+  const strollAt = (idx, fn) => {
+    const a = STROLL[idx], w = strollState(idx);
+    ctx.save();
+    ctx.translate(a.x + w.off, a.y - w.lift);
+    if (w.flip < 0) ctx.scale(-1, 1);
+    fn(w);
+    ctx.restore();
+  };
+  strollAt(0, w => drawGoose(ctx, 0, 0, 1, flap, w.step));
+  strollAt(1, w => drawCat(ctx, 0, 0, .62, bob(1.7), w.step));
+  strollAt(2, w => drawRabbit(ctx, 0, 0, .56, bob(2.3), w.step));
+  strollAt(3, w => drawTurtle(ctx, 0, 0, .58, bob(1.2), w.step));
+  drawLadybug(ctx, 648, 1062, .5, bob(3.1));   // 瓢虫不在裙子边上，就让它趴着
+  if (state.next) {
+    roughCircle(ctx, 92, 1062, 31, 771, { width: 1.6, alpha: .35, passes: 1 });
+    drawFood(ctx, state.next.type, 92, 1062, R * 0.62, state.next.seed);
+  }
+
+  ctx.restore();
+}
+
+// ==================== 主循环 ====================
+function update(dt) {
+  state.time += dt;
+  state.recoil = Math.max(0, state.recoil - dt * 1.9);     // 整套甩臂大约 0.53 秒
+  state.shake = Math.max(0, state.shake - dt * 40);
+  if (state.swoosh) { state.swoosh.t += dt; if (state.swoosh.t > 0.3) state.swoosh = null; }
+  if (!state.ball) state.heldPop = Math.min(1, state.heldPop + dt * 4.5);
+  updateStroll(dt);
+
+  if (state.screen === 'playing') stepBall(dt);
+
+  for (let i = state.fallers.length - 1; i >= 0; i--) {
+    const f = state.fallers[i];
+    f.vy += 1900 * dt;
+    f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt;
+    if (f.y > H + 80) state.fallers.splice(i, 1);
+  }
+  if (state.pendingTurn && !state.fallers.length) { state.pendingTurn = false; afterTurn(); }
+
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.t += dt;
+    p.vy += (p.g || 700) * dt;
+    if (p.star) p.rot += p.vr * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.t >= p.life) state.particles.splice(i, 1);
+  }
+}
+
+let lastT = 0;
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - lastT) / 1000 || 0);
+  lastT = ts;
+  if (state.screen !== 'paused') update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ==================== UI ====================
+const $ = id => document.getElementById(id);
+const el = {
+  hud: $('hud'), score: $('uiScore'), level: $('uiLevel'), best: $('uiBest'), push: $('uiPush'),
+  title: $('screenTitle'), dialog: $('screenDialog'), original: $('screenOriginal'),
+  dlgTitle: $('dlgTitle'), dlgBody: $('dlgBody'), btnMain: $('btnMain'), btnRetry: $('btnRetry'), btnHome: $('btnHome'),
+  btnSound: $('btnSound'), btnLang: $('btnLang'), btnPause: $('btnPause'),
+};
+const t = k => I18N[state.lang][k];
+
+function save(k, v) { try { localStorage.setItem('fat-goose-' + k, String(v)); } catch (e) {} }
+function load(k) { try { return localStorage.getItem('fat-goose-' + k); } catch (e) { return null; } }
+
+function updateHud() {
+  el.score.textContent = state.score;
+  el.level.textContent = state.level;
+  el.best.textContent = state.best;
+  const soon = state.shotsLeft <= 1;
+  el.push.textContent = state.screen === 'playing' ? (soon ? t('pushSoon') : t('push')(state.shotsLeft)) : '';
+  el.push.classList.toggle('warn', soon);
+}
+
+function applyLang() {
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i18n]').forEach(n => {
+    const v = I18N[state.lang][n.dataset.i18n];
+    if (typeof v === 'string') n.innerHTML = v;
+  });
+  el.btnLang.textContent = state.lang === 'zh' ? 'EN' : '中';
+  document.title = t('title');
+  updateHud();
+}
+
+function showScreen(name) {
+  state.screen = name;
+  el.title.classList.toggle('hidden', name !== 'title');
+  el.dialog.classList.toggle('hidden', name !== 'dialog');
+  el.hud.style.display = (name === 'title' || name === 'original') ? 'none' : '';
+  updateHud();
+}
+
+function levelClear() {
+  addScore(100 + state.shotsLeft * 15);
+  state.lastResult = 'win';
+  save('level', Math.max(state.level + 1, Number(load('level') || 1)));
+  sfx.win();
+  el.dlgTitle.textContent = t('clear');
+  el.dlgBody.innerHTML = `${t('lvScore')} <span class="big">${state.levelScore}</span><br>${t('total')} ${state.score}`;
+  el.btnMain.textContent = t('next');
+  el.btnRetry.textContent = t('retry');
+  el.btnRetry.style.display = '';
+  el.btnHome.parentElement.style.display = 'none';
+  showScreen('dialog');
+}
+
+function gameOver() {
+  state.lastResult = 'lose';
+  sfx.lose();
+  const isBest = state.score >= state.best && state.score > 0;
+  el.dlgTitle.textContent = t('over');
+  el.dlgBody.innerHTML = `${t('total')} <span class="big">${state.score}</span><br>${isBest ? t('newBest') : t('best') + ' ' + state.best}`;
+  el.btnMain.textContent = t('again');
+  el.btnRetry.style.display = 'none';
+  el.btnHome.parentElement.style.display = '';
+  showScreen('dialog');
+}
+
+// ==================== 输入 ====================
+function pointToAim(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * W;
+  const y = (e.clientY - rect.top) / rect.height * H;
+  const dx = x - ORIGIN.x;
+  const dy = Math.min(y - ORIGIN.y, -30);      // 不允许往下瞄
+  let a = Math.atan2(dx, -dy);
+  state.aim = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, a));
+}
+
+let aiming = false;
+canvas.addEventListener('pointerdown', e => {
+  if (state.screen !== 'playing') return;
+  aiming = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  pointToAim(e);
+});
+canvas.addEventListener('pointermove', e => {
+  if (state.screen !== 'playing') return;
+  if (e.pointerType === 'mouse' || aiming) pointToAim(e);
+});
+canvas.addEventListener('pointerup', e => {
+  if (state.screen !== 'playing') { aiming = false; return; }
+  if (aiming) { pointToAim(e); shoot(); }
+  aiming = false;
+});
+canvas.addEventListener('pointercancel', () => { aiming = false; });
+window.addEventListener('keydown', e => {
+  if (state.screen !== 'playing') return;
+  if (e.key === 'ArrowLeft') state.aim = Math.max(-MAX_ANGLE, state.aim - 0.06);
+  else if (e.key === 'ArrowRight') state.aim = Math.min(MAX_ANGLE, state.aim + 0.06);
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); shoot(); }
+});
+
+$('btnStart').addEventListener('click', () => { getAudioCtx(); startLevel(1); state.score = 0; showScreen('playing'); });
+el.btnMain.addEventListener('click', () => {
+  if (state.lastResult === 'pause') showScreen('playing');                                    // 继续玩
+  else if (state.lastResult === 'win') { startLevel(state.level + 1); showScreen('playing'); } // 下一关
+  else { state.score = 0; startLevel(1); showScreen('playing'); }                              // 再试一次
+});
+el.btnRetry.addEventListener('click', () => {          // 重玩本关（输了的时候这个键是藏起来的）
+  if (state.lastResult === 'win') state.score -= state.levelScore;
+  startLevel(state.level);
+  showScreen('playing');
+});
+el.btnHome.addEventListener('click', () => { startLevel(1); state.score = 0; showScreen('title'); });
+el.btnPause.addEventListener('click', () => {
+  if (state.screen !== 'playing') return;
+  state.lastResult = 'pause';
+  el.dlgTitle.textContent = t('paused');
+  el.dlgBody.innerHTML = `${t('total')} <span class="big">${state.score}</span>`;
+  el.btnMain.textContent = t('resume');
+  el.btnRetry.textContent = t('retry');
+  el.btnRetry.style.display = '';
+  el.btnHome.parentElement.style.display = '';
+  el.dialog.classList.remove('hidden');
+  el.hud.style.display = '';
+  state.screen = 'paused';        // update() 里会停住，render 继续
+});
+el.btnSound.addEventListener('click', () => {
+  state.muted = !state.muted;
+  el.btnSound.textContent = state.muted ? '🔇' : '🔊';
+  save('muted', state.muted ? 1 : 0);
+});
+el.btnLang.addEventListener('click', () => {
+  state.lang = state.lang === 'zh' ? 'en' : 'zh';
+  save('lang', state.lang);
+  applyLang();
+});
+$('btnOriginal').addEventListener('click', () => { el.title.classList.add('hidden'); el.original.classList.remove('hidden'); });
+$('btnCloseOriginal').addEventListener('click', () => { el.original.classList.add('hidden'); el.title.classList.remove('hidden'); });
+
+// ==================== 启动 ====================
+function init() {
+  buildPaper();
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+
+  state.best = Number(load('best') || 0);
+  state.muted = load('muted') === '1';
+  el.btnSound.textContent = state.muted ? '🔇' : '🔊';
+  const savedLang = load('lang');
+  state.lang = savedLang || ((navigator.language || 'zh').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  applyLang();
+
+  // 原画照片存在才显示“看看原作”
+  const img = $('originalImg');
+  img.onload = () => { $('originalWrap').classList.add('show'); $('originalMissing').style.display = 'none'; };
+  img.onerror = () => { $('originalWrap').classList.remove('show'); };
+  img.src = 'assets/original-drawing.jpg';
+
+  startLevel(1);          // 标题页背后就是第一关的画面
+  showScreen('title');
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
