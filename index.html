@@ -722,61 +722,25 @@ function drawGirl(ctx, aim, recoil) {
   roughPath(ctx, [[shL.x, shL.y], [218 - k * 15, 1146], [lw.x, lw.y]], S + 3, { width: 2.6 });
   drawHand(ctx, lw.x - 2, lw.y + 13, Math.PI / 2 + k * 0.3, S + 4, 1);
 
-  // ---- 头：先画轮廓和涂黑的头发，马尾压在它上面 ----
-  const headPts = circlePts(headX, headY, headR, 26);
-  roughPath(ctx, headPts, S + 7, { closed: true, width: 2.6 });
-  ctx.save();
-  ctx.beginPath(); headPts.forEach(([px, py], idx) => idx ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.clip();
-  const rnd = mulberry32(S + 8);
-  // 多个方向的密集涂抹，读起来才是"涂黑的头发"而不是条纹球
-  for (let pass = 0; pass < 3; pass++) {
-    const ang = -0.9 + pass * 0.7;
-    pencil(ctx, 3.4, .3);
-    for (let i2 = 0; i2 < 34; i2++) {
-      const t = -headR * 1.5 + rnd() * headR * 3;
-      const ox = Math.cos(ang) * headR * 1.6, oy = Math.sin(ang) * headR * 1.6;
-      const px = headX - Math.sin(ang) * t, py = headY + Math.cos(ang) * t;
-      ctx.beginPath();
-      ctx.moveTo(px - ox, py - oy);
-      ctx.quadraticCurveTo(px + (rnd() - .5) * 14, py + (rnd() - .5) * 14, px + ox, py + oy);
-      ctx.stroke();
-    }
-  }
-  // 再叠一遍"往上梳"的走向：从下半圈起笔，全都收进头顶发绳那一点。
-  // 少了这一遍，头就只是一颗涂黑的球，看不出头发是被拢上去扎起来的。
-  const tieX = 268, tieY = 1020;
-  pencil(ctx, 2.4, .22);
-  for (let i2 = 0; i2 < 22; i2++) {
-    const a = 0.35 + i2 / 21 * 2.45;
-    ctx.beginPath();
-    ctx.moveTo(headX + Math.cos(a) * headR * 1.02, headY + Math.sin(a) * headR * 1.02);
-    ctx.quadraticCurveTo(headX + (rnd() - .5) * 26, headY - headR * .3, tieX, tieY + 6);
-    ctx.stroke();
-  }
-  ctx.restore(); ctx.globalAlpha = 1;
-
-  // ---- 马尾：发绳扎在后脑勺上，发束探出头顶一点点就翻下来，贴着左边垂到肩线以下 ----
-  // 发梢往左是有讲究的：右臂是举起来的，往右会跟胳膊打架，往左还能跟右臂形成对角平衡。
-  const ctrl = [[0, 0], [4, -14], [-2, -26], [-14, -30], [-28, -26], [-38, -8], [-40, 20], [-42, 58], [-46, 90], [-52, 108]]
+  // ---- 马尾：照着原稿画。原稿里头发是从后脑勺底部正中垂下来的一长束，
+  // 直直落到腰线、末端收尖，压在衣服前面——不是扎在头顶的高马尾。
+  // 长度约 1.2 个头径、宽度只有头宽的四分之一，几乎等宽到末端才收。
+  // 先画马尾再画头，头正好压住发根那一截。
+  const root = { x: headX + 2, y: headY + headR - 22 };
+  const ctrl = [[0, 0], [-2, 26], [1, 53], [6, 79], [10, 100], [12, 116]]
     .map(([ox, oy], idx) => {
-      const t = idx / 9, lag = Math.pow(t, 1.6);       // 发绳几乎不动，越靠发梢甩得越开
-      return [tieX + ox - k * 20 * lag, tieY + oy - Math.max(0, k) * 12 * lag];
+      const t = idx / 5, lag = Math.pow(t, 1.6);      // 发根几乎不动，越靠发梢甩得越开
+      return [root.x + ox - k * 18 * lag, root.y + oy - Math.max(0, k) * 5 * lag];
     });
-  const spine = smoothSpine(ctrl, 26);
-  // 发绳处最细 -> 头顶上方鼓到最粗 -> 一路收成尖。一根马尾就是靠这条曲线认出来的。
-  // 前面那段用 smoothstep 慢慢鼓起来：一出发绳就到最粗的话，根部会糊成一块板子。
-  const tailW = t => {
-    const g = Math.min(1, t / 0.3), grow = g * g * (3 - 2 * g);
-    return (6 + 18 * grow) * Math.pow(1 - t, 0.95);
-  };
+  const spine = smoothSpine(ctrl, 24);
+  // 原稿那束头发几乎是等宽的，最后才收成尖，所以别用会中段鼓包的曲线
+  const tailW = t => (7 + 6 * Math.min(1, t / 0.25)) * Math.pow(1 - t, 0.35);
   const tail = ribbon(spine, tailW);
-  // 用 source-over 而不是正片叠底：发束是一块平的浅灰，头是有笔触的深灰，
-  // 靠明度和质感分开；叠底只会越叠越黑，跟头糊成一坨。
-  washFill(ctx, tail, '#525252', S + 13, .6, 'source-over');
-  roughPath(ctx, tail, S + 9, { closed: true, width: 2.4 });
-  // 束里的几绺：偏移量跟着当地宽度走，所以根部自然收拢、中段散开、发梢又聚回尖上
-  pencil(ctx, 1.5, .34);
-  [-0.55, -0.2, 0.2, 0.55].forEach(u => {
+  washFill(ctx, tail, '#8a8a8a', S + 13, .2, 'source-over');
+  roughPath(ctx, tail, S + 9, { closed: true, width: 2.2 });
+  // 束里的竖向发丝——原稿里就是几道顺着垂下来的平行线，跟头上的横线正好对着
+  pencil(ctx, 1.5, .5);
+  [-0.62, -0.3, 0, 0.3, 0.62].forEach(u => {
     ctx.beginPath();
     offsetSpine(spine, t => tailW(t) * u).forEach(([px, py], idx) => idx ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
     ctx.stroke();
@@ -784,20 +748,35 @@ function drawGirl(ctx, aim, recoil) {
   // 发梢岔出去的碎发，破掉 ribbon 收口那条平边
   const tip = spine[spine.length - 1], prev = spine[spine.length - 2];
   const tdx = tip[0] - prev[0], tdy = tip[1] - prev[1], td = Math.hypot(tdx, tdy) || 1;
-  pencil(ctx, 1.6, .38);
-  [-0.42, -0.05, 0.36].forEach((a, n) => {
-    const ca = Math.cos(a), sa = Math.sin(a), len = 11 + n * 4;
+  pencil(ctx, 1.5, .4);
+  [-0.3, 0, 0.26].forEach((a, n) => {
+    const ca = Math.cos(a), sa = Math.sin(a), len = 9 + n * 3;
     ctx.beginPath();
-    ctx.moveTo(tip[0] - tdx / td * 6, tip[1] - tdy / td * 6);
+    ctx.moveTo(tip[0] - tdx / td * 5, tip[1] - tdy / td * 5);
     ctx.lineTo(tip[0] + (tdx * ca - tdy * sa) / td * len, tip[1] + (tdx * sa + tdy * ca) / td * len);
     ctx.stroke();
   });
   ctx.globalAlpha = 1;
 
-  // 红头绳最后画，正好压住头顶和发束的接缝
-  const knot = circlePts(tieX, tieY + 1, 10, 16, 0.62);
-  washFill(ctx, knot, '#e0473c', S + 15, .85, 'source-over');
-  roughPath(ctx, knot, S + 16, { closed: true, width: 1.8, passes: 1 });
+  // ---- 头：一道一道横线平涂满，从上排到下。
+  // 原稿就是这么涂的，跟马尾的竖发丝形成对比；换成多方向乱涂就不是那张画了。
+  const headPts = circlePts(headX, headY, headR, 26);
+  roughPath(ctx, headPts, S + 7, { closed: true, width: 2.6 });
+  ctx.save();
+  ctx.beginPath(); headPts.forEach(([px, py], idx) => idx ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.clip();
+  const rnd = mulberry32(S + 8);
+  // 每一道的长短、粗细、深浅、间距都不一样：排得一样齐就成了机器画的条纹球。
+  // 有的从左边起笔中途收住，有的从右边补一道，叠出来才是手涂的那种不匀。
+  for (let row = 0, py = headY - headR + 2; py < headY + headR; row++) {
+    pencil(ctx, 3 + rnd() * 2, .3 + rnd() * .22);
+    const l = -1.05 + rnd() * .5, r = 1.05 - rnd() * .5;   // 两头各自收进来一点
+    ctx.beginPath();
+    ctx.moveTo(headX + headR * l, py + (rnd() - .5) * 2);
+    ctx.quadraticCurveTo(headX + (rnd() - .5) * 24, py + (rnd() - .5) * 3, headX + headR * r, py + (rnd() - .5) * 2);
+    ctx.stroke();
+    py += 1.5 + rnd() * 1.9;                                // 间距也不匀
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
   ctx.restore();
 }
 
