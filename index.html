@@ -91,9 +91,6 @@
   .btn:active { transform: translate(.06em, .1em); }
   .btn.small { font-size: .8em; padding: .4em 1em; }
   .hint { font-size: .75em; color: var(--ink-soft); margin-top: 1em; line-height: 1.7; }
-  #originalWrap { display: none; }
-  #originalWrap.show { display: block; }
-  #originalImg { max-width: 100%; max-height: 60vh; border: .12em solid var(--ink); }
   .credit { position: absolute; bottom: .8em; left: 0; right: 0; font-size: .7em; color: var(--ink-soft); }
   @media (prefers-reduced-motion: reduce) { .btn:active, .ibtn:active { transform: none; } }
 </style>
@@ -121,16 +118,9 @@
       <h1 data-i18n="title">肥鹅美食街</h1>
       <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
       <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
-      <div><button id="btnOriginal" class="btn small" data-i18n="original">看看原作</button></div>
       <p class="hint" data-i18n="howto">电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射</p>
     </div>
     <div class="credit" data-i18n="credit">原作：一位小朋友的手绘</div>
-  </div>
-
-  <div id="screenOriginal" class="layer screen hidden">
-    <div id="originalWrap"><img id="originalImg" alt="原画"></div>
-    <p class="hint" id="originalMissing" data-i18n="missing">把原画照片放到 assets/original-drawing.jpg 就能在这里看到啦。</p>
-    <button id="btnCloseOriginal" class="btn small" data-i18n="back">返 回</button>
   </div>
 
   <div id="screenDialog" class="layer screen hidden">
@@ -176,10 +166,21 @@ const TYPES = {
   c: { key: 'c', color: '#f9b21e', zh: '小鸡',  en: 'Chick' },
   f: { key: 'f', color: '#2fb3a8', zh: '小鱼',  en: 'Fish' },
   p: { key: 'p', color: '#f28ab2', zh: '小猪',  en: 'Piglet' },
+  b: { key: 'b', color: '#f5c93f', zh: '香蕉',  en: 'Banana' },
+  s: { key: 's', color: '#e8394a', zh: '草莓',  en: 'Strawberry' },
+  g: { key: 'g', color: '#a8c93a', zh: '青提',  en: 'Grapes' },
+  n: { key: 'n', color: '#e0952a', zh: '菠萝',  en: 'Pineapple' },
+  d: { key: 'd', color: '#d98c5f', zh: '甜甜圈', en: 'Donut' },
+  t: { key: 't', color: '#c9a06a', zh: '花生',  en: 'Peanut' },
+  h: { key: 'h', color: '#d4283c', zh: '樱桃',  en: 'Cherries' },
+  i: { key: 'i', color: '#d9a066', zh: '冰淇淋', en: 'Ice cream' },
+  u: { key: 'u', color: '#e6dcc4', zh: '饺子',  en: 'Dumpling' },
 };
-// 一共 9 样，但一关最多上 6 样：每关从这个环上取一段，所以每关的阵容都不一样。
-// 顺序是拿来穿插的——挨着的两样必须一眼分得开，别让一屏全是圆球。
-const TYPE_ORDER = ['w', 'o', 'j', 'a', 'c', 'm', 'f', 'e', 'p'];
+// 一共 18 样，但一关最多上 6 样：每关从这个环上取一段，所以每关的阵容都不一样。
+// 顺序是拿来穿插的——一关取的是连续 6 个，所以同色系的必须互相隔开：
+// 黄有蛋/小鸡/香蕉，红有苹果/草莓/樱桃/西瓜瓤，棕有咖啡/花生/冰淇淋/甜甜圈。
+// 任意 6 连（含首尾环绕）都核过，不会出现两个同色系挨着。
+const TYPE_ORDER = ['w', 'o', 'j', 'b', 'm', 'g', 'a', 'u', 'c', 'f', 'd', 'n', 'e', 'i', 's', 'p', 't', 'h'];
 const LEAF = '#5aa84a';             // 叶子和瓜蒂共用的绿
 const PORCELAIN = '#f4eee2';        // 杯子、碟子的白瓷
 const SEED_DARK = '#2f2a25';
@@ -190,9 +191,9 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 const I18N = {
   zh: {
     title: '肥鹅美食街', tagline: '瞄准、发射，三个一样的就能吃掉！',
-    start: '开 始', original: '看看原作', back: '返 回', home: '回首页',
+    start: '开 始', home: '回首页',
     howto: '电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射',
-    credit: '原作：一位小朋友的手绘', missing: '把原画照片放到 assets/original-drawing.jpg 就能在这里看到啦。',
+    credit: '原作：一位小朋友的手绘',
     score: '分数', level: '关卡', best: '最高分',
     push: n => `还有 ${n} 发就要上新菜了`, pushSoon: '小心！马上要上新菜',
     clear: '这条街被你吃光啦！', over: '食物压过线啦',
@@ -202,9 +203,9 @@ const I18N = {
   },
   en: {
     title: 'Fat Goose Food Street', tagline: 'Aim, shoot, match three to eat them up!',
-    start: 'Start', original: 'See the original', back: 'Back', home: 'Title',
+    start: 'Start', home: 'Title',
     howto: 'Desktop: move to aim, click to shoot<br>Mobile: hold and drag, release to shoot',
-    credit: 'From a kid’s pencil drawing', missing: 'Drop the photo at assets/original-drawing.jpg to see it here.',
+    credit: 'From a kid’s pencil drawing',
     score: 'Score', level: 'Level', best: 'Best',
     push: n => `${n} shots until new food arrives`, pushSoon: 'Watch out! New food incoming',
     clear: 'You ate the whole street!', over: 'The food crossed the line',
@@ -652,7 +653,247 @@ function drawPig(ctx, x, y, r, seed) {
   ctx.globalAlpha = 1;
 }
 
-const DRAWERS = { o: drawOrange, a: drawApple, w: drawMelon, m: drawMug, j: drawJuice, e: drawEgg, c: drawChick, f: drawFish, p: drawPig };
+// ---- 后来添的一批吃的：水果、干果、点心。画法跟前面一路：
+// 淡彩打底 -> 跟着轮廓缩小偏移的暗面 -> 铅笔轮廓 -> 一点留白高光。
+
+function drawBanana(ctx, x, y, r, seed) {
+  // 弯月：直接把一条弧线用 ribbon 加粗成中间胖两头尖
+  const spine = smoothSpine([
+    [x - r * .72, y - r * .14], [x - r * .42, y + r * .3], [x, y + r * .46],
+    [x + r * .42, y + r * .3], [x + r * .72, y - r * .14],
+  ], 18);
+  const body = ribbon(spine, t => r * (.055 + .19 * Math.sin(Math.PI * t)));
+  washFill(ctx, body, TYPES.b.color, seed, .68);
+  washFill(ctx, body.map(([px, py]) => [px + r * .05, py + r * .09]), '#cf9407', seed + 31, .22);
+  roughPath(ctx, body, seed, { closed: true });
+  shine(ctx, x - r * .2, y + r * .16, r * 1.1);
+  // 顺着弧度的一道棱线
+  pencil(ctx, 1.3, .4);
+  ctx.beginPath();
+  offsetSpine(spine, t => -r * .07 * Math.sin(Math.PI * t)).forEach(([px, py], n) => n ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // 两头的蒂
+  roughLine(ctx, x - r * .72, y - r * .14, x - r * .84, y - r * .34, seed + 5, { width: 2.6, passes: 1, color: '#6b4a2a' });
+  roughLine(ctx, x + r * .72, y - r * .14, x + r * .8, y - r * .3, seed + 6, { width: 2.2, passes: 1, color: '#6b4a2a' });
+}
+
+function drawStrawberry(ctx, x, y, r, seed) {
+  const pts = [];
+  for (let n = 0; n <= 30; n++) {
+    const a = -Math.PI / 2 + n / 30 * Math.PI * 2;
+    const down = (Math.sin(a) + 1) / 2;                       // 0 顶 -> 1 底
+    const wx = r * .72 * (1 - Math.pow(down, 1.7) * .9);      // 越往下越窄，收成一个尖
+    pts.push([x + Math.cos(a) * wx, y - r * .04 + Math.sin(a) * r * .76]);
+  }
+  washFill(ctx, pts, TYPES.s.color, seed, .7);
+  washFill(ctx, pts.map(([px, py]) => [x + (px - x) * .82 + r * .14, y + (py - y) * .82 + r * .12]), '#a81f2c', seed + 31, .22);
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .28, y - r * .34, r * 1.1);
+  // 白籽
+  const rnd = mulberry32(seed + 77);
+  ctx.save(); ctx.fillStyle = '#fff6e0'; ctx.globalAlpha = .85;
+  for (let n = 0; n < 8; n++) {
+    const down = rnd() * .78;
+    ctx.beginPath();
+    ctx.ellipse(x + (rnd() - .5) * r * 1.1 * (1 - down), y - r * .3 + down * r * .9, 1.6, 2.4, 0, 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
+  // 绿叶冠
+  for (let n = -1; n <= 1; n++) {
+    const lf = [[x, y - r * .5], [x + n * r * .44 - r * .04, y - r * .86], [x + n * r * .2, y - r * .44]];
+    washFill(ctx, lf, LEAF, seed + 40 + n, .7);
+    roughPath(ctx, lf, seed + 43 + n, { closed: true, width: 1.5, passes: 1 });
+  }
+}
+
+function drawGrapes(ctx, x, y, r, seed) {
+  // 梗 + 叶子
+  roughLine(ctx, x, y - r * .5, x + r * .06, y - r * .92, seed + 3, { width: 2.4, passes: 1, color: '#6b4a2a' });
+  leaf(ctx, x + r * .06, y - r * .88, r, seed + 4, -0.2, .5);
+  // 一串小圆粒，堆成倒三角
+  [[-.38, -.3], [0, -.38], [.38, -.3], [-.2, .02], [.2, .02], [0, .38]].forEach(([dx, dy], n) => {
+    const gx = x + dx * r, gy = y + dy * r;
+    washCircle(ctx, gx, gy, r * .26, TYPES.g.color, seed + 10 + n, .72);
+    washCircle(ctx, gx + r * .05, gy + r * .06, r * .18, '#7a9c1c', seed + 20 + n, .22);
+    roughCircle(ctx, gx, gy, r * .26, seed + 30 + n, { width: 1.7, passes: 1 });
+    shine(ctx, gx - r * .09, gy - r * .1, r * .55);
+  });
+}
+
+function drawPineapple(ctx, x, y, r, seed) {
+  // 绿冠先画，压在果身底下
+  for (let n = -2; n <= 2; n++) {
+    const lf = [[x + n * r * .14 - r * .13, y - r * .34], [x + n * r * .26, y - r * .86 + Math.abs(n) * r * .13], [x + n * r * .14 + r * .13, y - r * .34]];
+    washFill(ctx, lf, LEAF, seed + 40 + n, .68);
+    roughPath(ctx, lf, seed + 45 + n, { closed: true, width: 1.5, passes: 1 });
+  }
+  const body = circlePts(x, y + r * .16, r * .52, 24, 1.32);
+  washFill(ctx, body, TYPES.n.color, seed, .7);
+  washFill(ctx, body.map(([px, py]) => [x + (px - x) * .82 + r * .12, y + r * .16 + (py - y - r * .16) * .84 + r * .1]), '#b06d10', seed + 31, .22);
+  roughPath(ctx, body, seed, { closed: true });
+  shine(ctx, x - r * .24, y - r * .18, r * 1.1);
+  // 斜网格——菠萝就靠这个认
+  ctx.save();
+  ctx.beginPath(); body.forEach(([px, py], n) => n ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.clip();
+  pencil(ctx, 1.3, .45, '#8a5610');
+  for (let d = -1; d <= 1; d += 2) {
+    for (let n = -4; n <= 4; n++) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * .6, y + r * .16 + n * r * .22 + d * r * .6);
+      ctx.lineTo(x + r * .6, y + r * .16 + n * r * .22 - d * r * .6);
+      ctx.stroke();
+    }
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+function drawDonut(ctx, x, y, r, seed) {
+  const outer = circlePts(x, y, r * .8, 26);
+  const inner = circlePts(x, y, r * .27, 20);
+  // 中间那个洞是它最好认的地方，用 evenodd 挖出来
+  const ring = (o, i2, color, alpha, mode) => {
+    ctx.save();
+    ctx.globalCompositeOperation = mode || 'multiply';
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    o.forEach(([px, py], n) => n ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath();
+    i2.forEach(([px, py], n) => n ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath();
+    ctx.fill('evenodd');
+    ctx.restore();
+  };
+  ring(outer, inner, TYPES.d.color, .62);
+  // 粉糖霜：外缘做成波浪，像淋下来的
+  const icing = [];
+  for (let n = 0; n <= 30; n++) {
+    const a = n / 30 * Math.PI * 2;
+    icing.push([x + Math.cos(a) * (r * .66 + Math.sin(a * 5) * r * .07), y + Math.sin(a) * (r * .66 + Math.sin(a * 5) * r * .07)]);
+  }
+  ring(icing, inner, '#f2a0c0', .7, 'source-over');
+  roughPath(ctx, icing, seed + 3, { closed: true, width: 1.5, passes: 1, alpha: .6 });
+  roughPath(ctx, outer, seed, { closed: true });
+  roughPath(ctx, inner, seed + 1, { closed: true, width: 2 });
+  // 彩针
+  const rnd = mulberry32(seed + 91), dots = ['#e0473c', '#f7c948', '#4aa3e0', '#5aa84a'];
+  ctx.save(); ctx.lineCap = 'round';
+  for (let n = 0; n < 10; n++) {
+    const a = rnd() * Math.PI * 2, d = r * (.36 + rnd() * .22), ang = rnd() * Math.PI;
+    ctx.strokeStyle = dots[n % dots.length]; ctx.lineWidth = 2.2; ctx.globalAlpha = .9;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * d - Math.cos(ang) * 3, y + Math.sin(a) * d - Math.sin(ang) * 3);
+    ctx.lineTo(x + Math.cos(a) * d + Math.cos(ang) * 3, y + Math.sin(a) * d + Math.sin(ang) * 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPeanut(ctx, x, y, r, seed) {
+  const pts = [];
+  for (let n = 0; n <= 32; n++) {
+    const a = -Math.PI / 2 + n / 32 * Math.PI * 2;
+    const sy = Math.sin(a);
+    const waist = 1 - .36 * Math.exp(-Math.pow(sy / .32, 2));   // 中间收一道腰
+    pts.push([x + Math.cos(a) * r * .46 * waist, y + sy * r * .8]);
+  }
+  washFill(ctx, pts, TYPES.t.color, seed, .68);
+  washFill(ctx, pts.map(([px, py]) => [x + (px - x) * .82 + r * .1, y + (py - y) * .84 + r * .1]), '#8f6a34', seed + 31, .22);
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .16, y - r * .42, r * .9);
+  // 壳上的网纹
+  pencil(ctx, 1.2, .4, '#8f6a34');
+  for (let n = -2; n <= 2; n++) {
+    ctx.beginPath();
+    ctx.moveTo(x - r * .3, y + n * r * .26 + r * .1);
+    ctx.quadraticCurveTo(x, y + n * r * .26, x + r * .3, y + n * r * .26 + r * .1);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCherries(ctx, x, y, r, seed) {
+  // 梗：两根从一点分出去
+  const top = [x + r * .06, y - r * .78];
+  pencil(ctx, 2.2, .8, '#5a7a2a');
+  [[-1, -.36], [1, .34]].forEach(([d, dx]) => {
+    ctx.beginPath();
+    ctx.moveTo(top[0], top[1]);
+    ctx.quadraticCurveTo(top[0] + d * r * .3, y - r * .3, x + dx * r, y + r * .14);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  leaf(ctx, top[0], top[1] + 2, r, seed + 4, -0.1, .48);
+  // 两颗果，一高一低才不像哑铃
+  [[-.36, .3], [.34, .42]].forEach(([dx, dy], n) => {
+    const cx = x + dx * r, cy = y + dy * r;
+    washCircle(ctx, cx, cy, r * .32, TYPES.h.color, seed + 10 + n, .72);
+    washCircle(ctx, cx + r * .07, cy + r * .08, r * .22, '#8f1420', seed + 20 + n, .24);
+    roughCircle(ctx, cx, cy, r * .32, seed + 30 + n, { width: 2 });
+    shine(ctx, cx - r * .11, cy - r * .12, r * .7);
+  });
+}
+
+function drawIceCream(ctx, x, y, r, seed) {
+  // 蛋筒：倒三角
+  const cone = [[x - r * .42, y - r * .02], [x + r * .42, y - r * .02], [x + r * .04, y + r * .88]];
+  washFill(ctx, cone, TYPES.i.color, seed, .7);
+  roughPath(ctx, cone, seed + 1, { closed: true });
+  // 筒上的斜格
+  ctx.save();
+  ctx.beginPath(); cone.forEach(([px, py], n) => n ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.clip();
+  pencil(ctx, 1.2, .45, '#96683a');
+  for (let d = -1; d <= 1; d += 2) for (let n = -3; n <= 3; n++) {
+    ctx.beginPath();
+    ctx.moveTo(x - r * .5, y + n * r * .24 + d * r * .5);
+    ctx.lineTo(x + r * .5, y + n * r * .24 - d * r * .5);
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  // 奶油球
+  const ball = circlePts(x, y - r * .36, r * .44, 22, 0.92);
+  washFill(ctx, ball, '#f7e7c4', seed + 5, .85, 'source-over');
+  washFill(ctx, ball.map(([px, py]) => [x + (px - x) * .8 + r * .1, y - r * .36 + (py - y + r * .36) * .8 + r * .08]), '#dcbe88', seed + 6, .5, 'source-over');
+  roughPath(ctx, ball, seed + 7, { closed: true });
+  shine(ctx, x - r * .18, y - r * .5, r * 1.1);
+  // 顶上一颗樱桃
+  washCircle(ctx, x + r * .04, y - r * .82, r * .14, '#d4283c', seed + 8, .85, 'source-over');
+  roughCircle(ctx, x + r * .04, y - r * .82, r * .14, seed + 9, { width: 1.5, passes: 1 });
+}
+
+function drawDumpling(ctx, x, y, r, seed) {
+  const lw = r * .76, mid = y + r * .04;
+  const pts = [];
+  for (let n = 0; n <= 20; n++) {                       // 下面鼓出来的肚子
+    const a = Math.PI - n / 20 * Math.PI;
+    pts.push([x + Math.cos(a) * lw, mid + Math.sin(a) * r * .52]);
+  }
+  for (let n = 0; n <= 14; n++) {                       // 上面收口那条边，微微拱起
+    const t = n / 14;
+    pts.push([x + lw - 2 * lw * t, mid - Math.sin(Math.PI * t) * r * .26]);
+  }
+  washFill(ctx, pts, TYPES.u.color, seed, .95, 'source-over');
+  washFill(ctx, pts.map(([px, py]) => [x + (px - x) * .86, mid + (py - mid) * .86 + r * .14]), '#bcab84', seed + 31, .45, 'source-over');
+  roughPath(ctx, pts, seed, { closed: true });
+  shine(ctx, x - r * .26, mid + r * .1, r * 1.1);
+  // 一排褶，饺子全靠它
+  pencil(ctx, 2, .75);
+  for (let n = -2; n <= 2; n++) {
+    const px = x + n * r * .26;
+    ctx.beginPath();
+    ctx.moveTo(px, mid - Math.sin(Math.PI * (n * r * .26 + lw) / (2 * lw)) * r * .24);
+    ctx.quadraticCurveTo(px + r * .05, mid + r * .1, px + r * .02, mid + r * .2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+const DRAWERS = {
+  o: drawOrange, a: drawApple, w: drawMelon, m: drawMug, j: drawJuice, e: drawEgg,
+  c: drawChick, f: drawFish, p: drawPig,
+  b: drawBanana, s: drawStrawberry, g: drawGrapes, n: drawPineapple, d: drawDonut,
+  t: drawPeanut, h: drawCherries, i: drawIceCream, u: drawDumpling,
+};
 function drawFood(ctx, type, x, y, r, seed) {
   (DRAWERS[type] || drawOrange)(ctx, x, y, r, seed);
 }
@@ -706,8 +947,6 @@ function drawGirl(ctx, aim, recoil) {
   washFill(ctx, [[220 + sw, 1180], [344 + sw, 1180], [372 + sw * 1.7, 1256], [190 + sw * 1.7, 1256]], '#e2739f', S + 30, .22);
   roughPath(ctx, body, S + 5, { closed: true, width: 2.6 });
   roughLine(ctx, 222 + sw, 1178, 342 + sw, 1178, S + 6, { width: 1.8, passes: 1, alpha: .55 });
-  // 裙子上写的那个"筱"
-  handwrite(ctx, '筱', 281 + sw * 1.2, 1220, 36, S + 40, { rot: k * 0.05 - 0.03, alpha: .72 });
   // 腿（原画里被纸边切掉了，这里也让它走出画面）
   roughLine(ctx, 258 + sw, 1256, 254 + sw, 1280, S + 11, { width: 2.4, passes: 1 });
   roughLine(ctx, 306 + sw, 1256, 310 + sw, 1280, S + 12, { width: 2.4, passes: 1 });
@@ -932,11 +1171,13 @@ function drawLadybug(ctx, x, y, scale, bob, seed = 91) {
 // dir = 往哪边走（+1 右 / -1 左）；face = 这只精灵天生朝哪边（0 表示正面朝观众，不用翻）。
 // 路线都是照着躲开粉裙子和右下角那三个按钮量出来的，别随手加长。
 const STROLL_GAP = 0.9;              // 上一只站定到下一只出发之间歇多久
+// ⚠️ 这个数组的下标跟 render() 里 strollAt(0..3) 的调用一一对应，
+// 想换动物的位置就改这里的 x/dir/dist，别整行搬动——搬了就会张冠李戴。
 const STROLL = [
-  { x: 92,  y: 1150, s: 1,   face: -1, dir:  1, dist: 93,  speed: 30, gait: 'walk' },  // 小鹅
-  { x: 54,  y: 1232, s: .62, face: -1, dir:  1, dist: 111, speed: 40, gait: 'walk' },  // 猫
-  { x: 156, y: 1246, s: .56, face:  0, dir: -1, dist: 96,  speed: 55, gait: 'hop'  },  // 兔子
-  { x: 452, y: 1254, s: .58, face:  1, dir:  1, dist: 60,  speed: 12, gait: 'walk' },  // 乌龟
+  { x: 92,  y: 1150, s: 1,   face: -1, dir:  1, dist: 93,  speed: 30, gait: 'walk' },  // 0 小鹅
+  { x: 54,  y: 1232, s: .62, face: -1, dir:  1, dist: 111, speed: 40, gait: 'walk' },  // 1 猫
+  { x: 452, y: 1250, s: .56, face:  0, dir:  1, dist: 62,  speed: 55, gait: 'hop'  },  // 2 兔子（右）：裙摆到按钮之间只有 170px，蹦不远
+  { x: 156, y: 1248, s: .58, face:  1, dir: -1, dist: 60,  speed: 12, gait: 'walk' },  // 3 乌龟（左）：往右 60px 会撞进裙子，所以往左爬
 ];
 const stroll = { order: [], i: 0, t: 0 };
 
@@ -1104,11 +1345,14 @@ function levelTypes(n, count) {
   return out;
 }
 
+// 隔几发上一次新菜。查表比公式清楚：前几关给足余量，之后逐关收紧，第 7 关起保底 5 发。
+const PUSH_EVERY = [15, 12, 10, 9, 7, 6];
+
 function levelConfig(n) {
   return {
     rows: Math.min(8, 5 + Math.floor((n - 1) / 2)),
     typeCount: Math.min(6, 4 + Math.floor((n - 1) / 2)),
-    pushEvery: Math.max(4, 8 - Math.floor(n / 2)),
+    pushEvery: PUSH_EVERY[n - 1] || 5,
     density: n < 3 ? 0.9 : 1,
   };
 }
@@ -1541,7 +1785,7 @@ function loop(ts) {
 const $ = id => document.getElementById(id);
 const el = {
   hud: $('hud'), score: $('uiScore'), level: $('uiLevel'), best: $('uiBest'), push: $('uiPush'),
-  title: $('screenTitle'), dialog: $('screenDialog'), original: $('screenOriginal'),
+  title: $('screenTitle'), dialog: $('screenDialog'),
   dlgTitle: $('dlgTitle'), dlgBody: $('dlgBody'), btnMain: $('btnMain'), btnRetry: $('btnRetry'), btnHome: $('btnHome'),
   btnSound: $('btnSound'), btnLang: $('btnLang'), btnPause: $('btnPause'),
 };
@@ -1574,7 +1818,7 @@ function showScreen(name) {
   state.screen = name;
   el.title.classList.toggle('hidden', name !== 'title');
   el.dialog.classList.toggle('hidden', name !== 'dialog');
-  el.hud.style.display = (name === 'title' || name === 'original') ? 'none' : '';
+  el.hud.style.display = name === 'title' ? 'none' : '';
   updateHud();
 }
 
@@ -1674,8 +1918,6 @@ el.btnLang.addEventListener('click', () => {
   save('lang', state.lang);
   applyLang();
 });
-$('btnOriginal').addEventListener('click', () => { el.title.classList.add('hidden'); el.original.classList.remove('hidden'); });
-$('btnCloseOriginal').addEventListener('click', () => { el.original.classList.add('hidden'); el.title.classList.remove('hidden'); });
 
 // ==================== 启动 ====================
 function init() {
@@ -1689,12 +1931,6 @@ function init() {
   const savedLang = load('lang');
   state.lang = savedLang || ((navigator.language || 'zh').toLowerCase().startsWith('zh') ? 'zh' : 'en');
   applyLang();
-
-  // 原画照片存在才显示“看看原作”
-  const img = $('originalImg');
-  img.onload = () => { $('originalWrap').classList.add('show'); $('originalMissing').style.display = 'none'; };
-  img.onerror = () => { $('originalWrap').classList.remove('show'); };
-  img.src = 'assets/original-drawing.jpg';
 
   startLevel(1);          // 标题页背后就是第一关的画面
   showScreen('title');
