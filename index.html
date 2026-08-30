@@ -91,7 +91,6 @@
   .btn:active { transform: translate(.06em, .1em); }
   .btn.small { font-size: .8em; padding: .4em 1em; }
   .hint { font-size: .75em; color: var(--ink-soft); margin-top: 1em; line-height: 1.7; }
-  .credit { position: absolute; bottom: .8em; left: 0; right: 0; font-size: .7em; color: var(--ink-soft); }
   @media (prefers-reduced-motion: reduce) { .btn:active, .ibtn:active { transform: none; } }
 </style>
 </head>
@@ -118,9 +117,8 @@
       <h1 data-i18n="title">大鹅的美食</h1>
       <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
       <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
-      <p class="hint" data-i18n="howto">电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射</p>
+      <p class="hint" data-i18n="howto">按住拖动瞄准，松手发射</p>
     </div>
-    <div class="credit" data-i18n="credit">原作：一位小朋友的手绘</div>
   </div>
 
   <div id="screenDialog" class="layer screen hidden">
@@ -192,8 +190,7 @@ const I18N = {
   zh: {
     title: '大鹅的美食', tagline: '瞄准、发射，三个一样的就能吃掉！',
     start: '开 始', home: '回首页',
-    howto: '电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射',
-    credit: '原作：一位小朋友的手绘',
+    howto: '按住拖动瞄准，松手发射',
     score: '分数', level: '关卡', best: '最高分',
     push: n => `还有 ${n} 发就要上新菜了`, pushSoon: '小心！马上要上新菜',
     clear: '这一桌被你吃光啦！', over: '食物压过线啦',
@@ -204,8 +201,7 @@ const I18N = {
   en: {
     title: "Big Goose's Feast", tagline: 'Aim, shoot, match three to eat them up!',
     start: 'Start', home: 'Title',
-    howto: 'Desktop: move to aim, click to shoot<br>Mobile: hold and drag, release to shoot',
-    credit: 'From a kid’s pencil drawing',
+    howto: 'Hold and drag to aim, release to shoot',
     score: 'Score', level: 'Level', best: 'Best',
     push: n => `${n} shots until new food arrives`, pushSoon: 'Watch out! New food incoming',
     clear: 'You ate the whole spread!', over: 'The food crossed the line',
@@ -1735,9 +1731,20 @@ function render() {
   strollAt(2, w => drawRabbit(ctx, 0, 0, .56, bob(2.3), w.step));
   strollAt(3, w => drawTurtle(ctx, 0, 0, .58, bob(1.2), w.step));
   drawLadybug(ctx, 648, 1062, .5, bob(3.1));   // 瓢虫不在裙子边上，就让它趴着
+  // 下一个吃的：画成她头顶飘出来的一串思考泡泡——贴着头的地方是小圆点，
+  // 一路沿直线变大，最大的那个泡泡里才是真正的下一个，像是从她脑子里冒出来的。
+  // 位置是相对静止时的头部（headX/headY，见 drawGirl）算的，不参与出手动画，
+  // 泡泡稳稳地飘在原地。
   if (state.next) {
-    roughCircle(ctx, 92, 1062, 31, 771, { width: 1.6, alpha: .35, passes: 1 });
-    drawFood(ctx, state.next.type, 92, 1062, R * 0.62, state.next.seed);
+    const headEdge = { x: 282 - 48 * .7, y: 1032 - 48 * .7 };  // 头轮廓左上边缘
+    const bub = { x: 166, y: 890 };                             // 最大那个泡泡
+    const dotAt = t => ({ x: headEdge.x + (bub.x - headEdge.x) * t, y: headEdge.y + (bub.y - headEdge.y) * t });
+    [[.25, 4], [.5, 9], [.75, 15]].forEach(([t, r], n) => {
+      const p = dotAt(t);
+      roughCircle(ctx, p.x, p.y, r, 780 + n, { width: 1.3, alpha: .3, passes: 1 });
+    });
+    roughCircle(ctx, bub.x, bub.y, 31, 771, { width: 1.6, alpha: .35, passes: 1 });
+    drawFood(ctx, state.next.type, bub.x, bub.y, R * 0.62, state.next.seed);
   }
 
   ctx.restore();
