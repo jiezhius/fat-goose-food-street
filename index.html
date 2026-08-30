@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#e8e2d6">
-<title>肥鹅美食街</title>
+<title>大鹅美食街</title>
 <style>
   :root {
     --paper: #f6f3ec;
@@ -115,7 +115,7 @@
 
   <div id="screenTitle" class="layer screen">
     <div class="card">
-      <h1 data-i18n="title">肥鹅美食街</h1>
+      <h1 data-i18n="title">大鹅美食街</h1>
       <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
       <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
       <p class="hint" data-i18n="howto">电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射</p>
@@ -136,7 +136,7 @@
 
 <script>
 /* =========================================================================
-   《肥鹅美食街》— 根据一张小朋友的手绘设定图做成的泡泡龙
+   《大鹅美食街》— 根据一张小朋友的手绘设定图做成的泡泡龙
    单文件、零依赖、离线可玩。逻辑分辨率 720x1280，全部坐标都在这个空间里。
    ========================================================================= */
 
@@ -190,7 +190,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 // ==================== 文案 ====================
 const I18N = {
   zh: {
-    title: '肥鹅美食街', tagline: '瞄准、发射，三个一样的就能吃掉！',
+    title: '大鹅美食街', tagline: '瞄准、发射，三个一样的就能吃掉！',
     start: '开 始', home: '回首页',
     howto: '电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射',
     credit: '原作：一位小朋友的手绘',
@@ -202,7 +202,7 @@ const I18N = {
     paused: '暂停中', resume: '继续玩',
   },
   en: {
-    title: 'Fat Goose Food Street', tagline: 'Aim, shoot, match three to eat them up!',
+    title: 'Big Goose Food Street', tagline: 'Aim, shoot, match three to eat them up!',
     start: 'Start', home: 'Title',
     howto: 'Desktop: move to aim, click to shoot<br>Mobile: hold and drag, release to shoot',
     credit: 'From a kid’s pencil drawing',
@@ -1791,6 +1791,7 @@ const el = {
 };
 const t = k => I18N[state.lang][k];
 
+// 键名前缀保持 fat-goose- 不动：改了的话已经存下的最高分和设置会全部读不到
 function save(k, v) { try { localStorage.setItem('fat-goose-' + k, String(v)); } catch (e) {} }
 function load(k) { try { return localStorage.getItem('fat-goose-' + k); } catch (e) { return null; } }
 
