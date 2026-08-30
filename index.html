@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#e8e2d6">
-<title>大鹅美食街</title>
+<title>大鹅的美食</title>
 <style>
   :root {
     --paper: #f6f3ec;
@@ -115,7 +115,7 @@
 
   <div id="screenTitle" class="layer screen">
     <div class="card">
-      <h1 data-i18n="title">大鹅美食街</h1>
+      <h1 data-i18n="title">大鹅的美食</h1>
       <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
       <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
       <p class="hint" data-i18n="howto">电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射</p>
@@ -136,7 +136,7 @@
 
 <script>
 /* =========================================================================
-   《大鹅美食街》— 根据一张小朋友的手绘设定图做成的泡泡龙
+   《大鹅的美食》— 根据一张小朋友的手绘设定图做成的泡泡龙
    单文件、零依赖、离线可玩。逻辑分辨率 720x1280，全部坐标都在这个空间里。
    ========================================================================= */
 
@@ -190,25 +190,25 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 // ==================== 文案 ====================
 const I18N = {
   zh: {
-    title: '大鹅美食街', tagline: '瞄准、发射，三个一样的就能吃掉！',
+    title: '大鹅的美食', tagline: '瞄准、发射，三个一样的就能吃掉！',
     start: '开 始', home: '回首页',
     howto: '电脑：移动鼠标瞄准，点一下发射<br>手机：按住拖动瞄准，松手发射',
     credit: '原作：一位小朋友的手绘',
     score: '分数', level: '关卡', best: '最高分',
     push: n => `还有 ${n} 发就要上新菜了`, pushSoon: '小心！马上要上新菜',
-    clear: '这条街被你吃光啦！', over: '食物压过线啦',
+    clear: '这一桌被你吃光啦！', over: '食物压过线啦',
     next: '下一关', retry: '重玩本关', again: '再试一次',
     lvScore: '本关得分', total: '总分', newBest: '新纪录！',
     paused: '暂停中', resume: '继续玩',
   },
   en: {
-    title: 'Big Goose Food Street', tagline: 'Aim, shoot, match three to eat them up!',
+    title: "Big Goose's Feast", tagline: 'Aim, shoot, match three to eat them up!',
     start: 'Start', home: 'Title',
     howto: 'Desktop: move to aim, click to shoot<br>Mobile: hold and drag, release to shoot',
     credit: 'From a kid’s pencil drawing',
     score: 'Score', level: 'Level', best: 'Best',
     push: n => `${n} shots until new food arrives`, pushSoon: 'Watch out! New food incoming',
-    clear: 'You ate the whole street!', over: 'The food crossed the line',
+    clear: 'You ate the whole spread!', over: 'The food crossed the line',
     next: 'Next level', retry: 'Replay level', again: 'Try again',
     lvScore: 'Level score', total: 'Total', newBest: 'New best!',
     paused: 'Paused', resume: 'Resume',

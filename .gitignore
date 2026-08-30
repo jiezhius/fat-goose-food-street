@@ -2,5 +2,5 @@
 node_modules/
 dist/
 .claude/settings.local.json
-# 原稿照片只在本地留一份当美术参考，不公开托管
-assets/
+# assets/ 正常进仓库；只有小朋友的手绘原稿不公开托管（著作权顾虑）
+assets/original-drawing.jpg
