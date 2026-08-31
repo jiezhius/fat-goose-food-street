@@ -1,0 +1,533 @@
+<title>大鹅的美食开发笔记</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f6f2e9;
+    --paper-raised: #fffdf8;
+    --ink: #3a3530;
+    --ink-soft: #7a7166;
+    --accent: #c9603f;
+    --accent-deep: #a84a2d;
+    --accent-soft: #f3d9ae;
+    --line: rgba(58, 53, 48, .16);
+    --sage: #6f7d5c;
+    --sage-soft: #e1e6d5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #201c17;
+      --paper-raised: #2a241d;
+      --ink: #ece3d4;
+      --ink-soft: #a89a86;
+      --accent: #e28a5f;
+      --accent-deep: #f2ab7d;
+      --accent-soft: #4a3a26;
+      --line: rgba(236, 227, 212, .16);
+      --sage: #9bab84;
+      --sage-soft: #313829;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #201c17;
+    --paper-raised: #2a241d;
+    --ink: #ece3d4;
+    --ink-soft: #a89a86;
+    --accent: #e28a5f;
+    --accent-deep: #f2ab7d;
+    --accent-soft: #4a3a26;
+    --line: rgba(236, 227, 212, .16);
+    --sage: #9bab84;
+    --sage-soft: #313829;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    background-image:
+      radial-gradient(circle at 20% 8%, rgba(201, 96, 63, .05), transparent 45%),
+      radial-gradient(circle at 82% 92%, rgba(111, 125, 92, .05), transparent 45%);
+    color: var(--ink);
+    font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- 顶部 ---- */
+  header.hero { padding: 72px 0 40px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    font-size: 12.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+  h1.title {
+    font-family: 'Ma Shan Zheng', 'Xingkai SC', 'STKaiti', cursive;
+    font-weight: 400;
+    font-size: clamp(40px, 7vw, 62px);
+    line-height: 1.25;
+    margin: 0 0 18px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .dek {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0 0 28px;
+    text-wrap: balance;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .meta a { color: var(--ink-soft); text-decoration-color: var(--line); }
+  .meta a:hover { color: var(--accent); }
+
+  /* ---- 手绘分隔线 ---- */
+  .squiggle { display: block; width: 100%; height: 18px; margin: 8px 0 44px; overflow: visible; }
+  .squiggle path { fill: none; stroke: var(--line); stroke-width: 1.6; stroke-linecap: round; }
+
+  /* ---- 章节导航 ---- */
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 12px 0;
+    margin-bottom: 8px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.toc a {
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+  section { padding: 52px 0 8px; scroll-margin-top: 64px; }
+  .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  h2 {
+    font-family: 'Ma Shan Zheng', 'Xingkai SC', cursive;
+    font-weight: 400;
+    font-size: 30px;
+    margin: 0;
+    color: var(--ink);
+  }
+  .section-note { color: var(--ink-soft); font-size: 15px; margin: 0 0 32px; max-width: 60ch; }
+
+  /* ---- 1. 时间线 ---- */
+  .timeline { position: relative; margin-left: 8px; padding-left: 26px; border-left: 1.5px dashed var(--line); }
+  .stage { position: relative; padding-bottom: 30px; }
+  .stage:last-child { padding-bottom: 4px; }
+  .stage::before {
+    content: '';
+    position: absolute;
+    left: -31px; top: 6px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--paper);
+  }
+  .stage h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .stage p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+
+  /* ---- 2. 决策网格 ---- */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 620px) { .grid2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px 22px;
+  }
+  .card h3 {
+    margin: 0 0 8px;
+    font-size: 16.5px;
+    color: var(--accent-deep);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+  .card p + p { margin-top: 6px; }
+
+  /* ---- 3. 坑列表 ---- */
+  .pitfall { border-top: 1px solid var(--line); padding: 22px 0; display: grid; grid-template-columns: 34px 1fr; gap: 4px 16px; }
+  .pitfall:last-child { border-bottom: 1px solid var(--line); }
+  .pit-idx {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding-top: 2px;
+  }
+  .pit-title { font-weight: 700; font-size: 16px; margin: 0 0 8px; color: var(--ink); }
+  .pit-row { font-size: 14.5px; margin: 0 0 4px; color: var(--ink-soft); }
+  .pit-row b { color: var(--ink); font-weight: 600; }
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .04em;
+    padding: 1px 7px;
+    border-radius: 3px;
+    background: var(--sage-soft);
+    color: var(--sage);
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  /* ---- 4. 待办清单 ---- */
+  .todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .todo-list li {
+    display: flex; gap: 12px;
+    font-size: 15px;
+    color: var(--ink-soft);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .todo-list li:last-child { border-bottom: none; }
+  .todo-list li::before {
+    content: '☐';
+    color: var(--accent);
+    font-size: 15px;
+    line-height: 1.6;
+    flex: none;
+  }
+  .todo-list b { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .stage, .card, .pitfall { transition: transform .15s ease; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">项目笔记 · 大鹅的美食 🦢</p>
+    <h1 class="title">从一张手绘图，<br>到跨平台小游戏</h1>
+    <p class="dek">
+      记录《大鹅的美食》这个项目从孩子的一张手绘设定图开始，如何一步步长成一个零依赖的
+      Web 小游戏，又如何拆出跨平台架构、走到微信小游戏备案这一步——沿途的关键决策、
+      踩过的坑，和还没做完的事。
+    </p>
+    <p class="meta">
+      <span>仓库 · <a href="https://github.com/jiezhius/fat-goose-food" target="_blank" rel="noopener">github.com/jiezhius/fat-goose-food</a></span>
+      <span>在线试玩 · <a href="https://jiezhius.github.io/fat-goose-food/" target="_blank" rel="noopener">jiezhius.github.io/fat-goose-food</a></span>
+    </p>
+  </header>
+
+  <svg class="squiggle" viewBox="0 0 780 18" preserveAspectRatio="none">
+    <path d="M0,9 C60,2 100,16 160,9 C220,2 260,16 320,9 C380,2 420,16 480,9 C540,2 580,16 640,9 C700,2 740,16 780,9" />
+  </svg>
+
+  <nav class="toc">
+    <a href="#process">01 过程</a>
+    <a href="#decisions">02 关键决策</a>
+    <a href="#pitfalls">03 踩过的坑</a>
+    <a href="#next">04 后续待办</a>
+  </nav>
+
+  <section id="process">
+    <div class="section-head"><span class="section-num">01</span><h2>从 idea 到落地</h2></div>
+    <p class="section-note">时间顺序展开的十一个阶段——从孩子随手画的一张设定图，到提交微信小游戏备案审核。</p>
+    <div class="timeline">
+
+      <div class="stage">
+        <h3>起点：一张手绘设定图</h3>
+        <p>小朋友手绘的《大鹅的美食》：最上面一簇吃的，最下面垂着长马尾、穿粉裙子的小姑娘，
+        旁边蹲着猫兔龟和瓢虫。中间随手画的一条横线，后来成了游戏里的"警戒线"。</p>
+      </div>
+
+      <div class="stage">
+        <h3>零引擎搭建</h3>
+        <p>纯手写 Canvas 2D 渲染 + 手写状态机，铅笔线稿配淡彩上色，连纸张颗粒和折痕都是现画的，
+        不引入任何外部图片素材，也不用 Cocos / Laya / Egret 这类商业引擎。</p>
+      </div>
+
+      <div class="stage">
+        <h3>多轮美术打磨</h3>
+        <p>马尾发型改了好几版，最终严格照原稿画成垂到腰的长马尾；手的画法简化成三条线；
+        加入小动物轮流散步的系统；图案从 6 种扩展到 18 种；难度曲线反复调整。</p>
+      </div>
+
+      <div class="stage">
+        <h3>著作权收尾</h3>
+        <p>撤掉原画照片和孩子的真实名字，只保留手绘感的复刻——原稿照片不进仓库、不公开托管，
+        游戏里也没有查看原稿的入口。</p>
+      </div>
+
+      <div class="stage">
+        <h3>两次改名</h3>
+        <p>肥鹅美食街 → 大鹅美食街 → 大鹅的美食，最终定名。</p>
+      </div>
+
+      <div class="stage">
+        <h3>上线 GitHub Pages</h3>
+        <p>Web 版是单文件、零依赖、离线可玩，双击 index.html 就能玩，也能直接分享链接给家人。</p>
+      </div>
+
+      <div class="stage">
+        <h3>决定跨平台</h3>
+        <p>计划陆续上架微信小游戏、抖音小游戏、TikTok 小程序，拆出
+        <code>core / adapters / platforms</code> 三层架构，为共享逻辑打基础。</p>
+      </div>
+
+      <div class="stage">
+        <h3>微信小游戏适配</h3>
+        <p>接入 Platform 接口、基于安全区的等比缩放居中、触摸坐标换算、
+        用纯 JS 手写振荡器生成 WAV 音效文件、全局错误兜底画在屏幕上。</p>
+      </div>
+
+      <div class="stage">
+        <h3>建自动化验证工作流</h3>
+        <p>用 wechatide 的 MCP/CLI 能力自己操作模拟器、自己截图、自己看控制台报错，
+        不用每次都等真机反馈才能定位问题。</p>
+      </div>
+
+      <div class="stage">
+        <h3>修真机 bug、打通关卡</h3>
+        <p>一路修到能完整通关、拿到新高分——细节见下面"踩过的坑"。</p>
+      </div>
+
+      <div class="stage">
+        <h3>提交预审批文件备案</h3>
+        <p>填完场景 / 玩法 / 系统功能三大块，配上模拟器实拍的真实截图，
+        顺手改掉了一处踩广告法红线的涂鸦文案，提交审核。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <svg class="squiggle" viewBox="0 0 780 18" preserveAspectRatio="none">
+    <path d="M0,9 C60,16 100,2 160,9 C220,16 260,2 320,9 C380,16 420,2 480,9 C540,16 580,2 640,9 C700,16 740,2 780,9" />
+  </svg>
+
+  <section id="decisions">
+    <div class="section-head"><span class="section-num">02</span><h2>核心关键点和决策</h2></div>
+    <p class="section-note">沟通过程中定下来、并且值得记住"为什么这么定"的几件事。</p>
+    <div class="grid2">
+
+      <div class="card">
+        <h3>零游戏引擎</h3>
+        <p>美术和交互都足够简单，引入 Cocos / Laya 这类引擎反而是负担。全部用手写 Canvas 2D
+        实现，代码即文档，改起来直接改函数。</p>
+      </div>
+
+      <div class="card">
+        <h3>美术零素材</h3>
+        <p>没有一张外部图片，包括纸张纹理。所有笔触、淡彩、抖动都是运行时现画的，
+        风格统一、体积也小。</p>
+      </div>
+
+      <div class="card">
+        <h3>著作权优先于原真性</h3>
+        <p>原画照片和孩子真名不进仓库、不公开托管；后面涂鸦文案踩到广告法红线时，
+        也是同一个原则——合规优先，哪怕要牺牲一点原稿的神韵。</p>
+      </div>
+
+      <div class="card">
+        <h3>core / adapters / platforms 三层架构</h3>
+        <p>core 是纯游戏逻辑和画法，通过注入的 <code>Platform</code> 接口间接调用宿主能力；
+        adapters 是各平台的具体实现；platforms 是各平台的工程产物。</p>
+      </div>
+
+      <div class="card">
+        <h3>build.py 纯文本拼接、零依赖</h3>
+        <p>Web 版要保持"双击即玩"，<code>file://</code> 协议下模块加载不可靠；
+        小游戏侧 require 能否跨出项目根目录也不确定。干脆两边都用同一套简单的文本拼接机制。</p>
+      </div>
+
+      <div class="card">
+        <h3>官方文档优先于搜索摘要 / 本地猜测</h3>
+        <p>被两次抓到调研不充分就下结论（MCP vs CLI、Claude Code 的 MCP 配置位置），
+        已经写进跨会话的长期记忆，往后调研先查官网。</p>
+      </div>
+
+      <div class="card">
+        <h3>正式发布留给人来按</h3>
+        <p><code>wx upload</code> 这一步始终不放进自动化流程，什么时候真正发布体验版，
+        由使用者自己决定。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <svg class="squiggle" viewBox="0 0 780 18" preserveAspectRatio="none">
+    <path d="M0,9 C60,2 100,16 160,9 C220,2 260,16 320,9 C380,2 420,16 480,9 C540,2 580,16 640,9 C700,2 740,16 780,9" />
+  </svg>
+
+  <section id="pitfalls">
+    <div class="section-head"><span class="section-num">03</span><h2>踩过的坑</h2></div>
+    <p class="section-note">十个真实踩过的坑，按"问题 / 根因 / 修复"记录，供以后排查类似问题时直接参考。</p>
+
+    <div class="pitfall">
+      <div class="pit-idx">01</div>
+      <div>
+        <p class="pit-title">updateHud is not defined</p>
+        <p class="pit-row"><b>问题</b>：startLevel 等函数直接调用了只在 web.js 里定义的 updateHud，微信小游戏侧直接报错。</p>
+        <p class="pit-row"><b>根因</b>：拆分成 core/adapters 后，UI 刷新方式两个平台完全不同，core 里却还残留着 Web 专属调用。</p>
+        <p class="pit-row"><b>修复</b>：改成可选钩子 <code>Platform.onStateChange</code>，Web 靠它刷新 DOM，微信侧每帧自己重画，不需要这个钩子。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">02</div>
+      <div>
+        <p class="pit-title">wx.createOffscreenCanvas is not a function</p>
+        <p class="pit-row"><b>问题</b>：离屏画布创建失败。</p>
+        <p class="pit-row"><b>根因</b>：<span class="tag">凭记忆改的坑</span>没查文档，把小程序（miniprogram）的 API 当成了小游戏（minigame）的 API 来用。</p>
+        <p class="pit-row"><b>修复</b>：查官方文档确认 <code>wx.createCanvas()</code> 第一次调用返回主屏画布，之后每次调用返回独立离屏画布，不是单例。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">03</div>
+      <div>
+        <p class="pit-title">画面偏左、模糊、小姑娘位置不对</p>
+        <p class="pit-row"><b>问题</b>：真机截图里游戏画面没有居中，也没跟设备屏幕等比缩放。</p>
+        <p class="pit-row"><b>根因</b>：一开始只是简单把 canvas 铺满整个屏幕，完全没做缩放居中计算。</p>
+        <p class="pit-row"><b>修复</b>：实现基于 <code>safeArea</code> 的 contain-fit 算法，等比缩放后居中放进安全区。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">04</div>
+      <div>
+        <p class="pit-title">fitCanvas 读到过时的窗口数据</p>
+        <p class="pit-row"><b>问题</b>：玩了一会儿之后画面又开始错位。</p>
+        <p class="pit-row"><b>根因</b>：窗口信息被缓存成脚本加载时的常量，resize 后读到的还是旧数据。</p>
+        <p class="pit-row"><b>修复</b>：改成每次现查的 <code>computeSys()</code> 函数，不再缓存。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">05</div>
+      <div>
+        <p class="pit-title">消除后掉落动画，底部溢出安全区</p>
+        <p class="pit-row"><b>问题</b>：中间几个消除后，下面悬空的图案掉下来时，底部会冒出一截乱码一样的画面。</p>
+        <p class="pit-row"><b>根因</b>：<span class="tag">真正根因</span>不是窗口尺寸变化——<code>ctx.setTransform()</code> 只做坐标映射，从没真正"裁掉"过超界内容，掉落动画本来就设计成会短暂飞出画布。</p>
+        <p class="pit-row"><b>修复</b>：<code>render()</code> 里补上 <code>ctx.clip()</code>，把绘制范围真正裁到逻辑画布内。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">06</div>
+      <div>
+        <p class="pit-title">jsbridge not ready 报错</p>
+        <p class="pit-row"><b>问题</b>：控制台里有一条 try/catch 拦不住的报错。</p>
+        <p class="pit-row"><b>根因</b>：<code>wx.getSystemInfoSync()</code> 在 jsbridge 未就绪时同步调用，运行时自己会打一条日志，不是可捕获的 JS 异常。</p>
+        <p class="pit-row"><b>修复</b>：直接移除这个兜底调用，改用新版 <code>getWindowInfo</code> / <code>getAppBaseInfo</code>。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">07</div>
+      <div>
+        <p class="pit-title">画布版 UI 漏了按钮、HUD 文字重叠</p>
+        <p class="pit-row"><b>问题</b>：右下角只有暂停按钮，声音和语言按钮完全没画；最顶端 HUD 文字跟第一排食物糊在一起。</p>
+        <p class="pit-row"><b>根因</b>：第一版只顾着写开始和暂停，按钮位置和文字高度都是凭感觉写的，没有照 H5 版精确换算。</p>
+        <p class="pit-row"><b>修复</b>：按 1em = 24px 精确复刻 H5 版 CSS 位置，压缩 HUD 文字高度避开食物网格。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">08</div>
+      <div>
+        <p class="pit-title">调研不够充分就下结论</p>
+        <p class="pit-row"><b>问题</b>：MCP 和 CLI 哪个更合适、Claude Code 的 MCP 配置该写在哪，两次都给出了武断结论。</p>
+        <p class="pit-row"><b>根因</b>：分别依赖了网络搜索的转述摘要、和本地文件"没提到"这种沉默信号去反推结论，没有第一时间查官方文档。</p>
+        <p class="pit-row"><b>修复</b>：读官方文档确认真实答案，并把"官方文档优先"写进跨会话长期记忆。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">09</div>
+      <div>
+        <p class="pit-title">自动化点击坐标空间搞混</p>
+        <p class="pit-row"><b>问题</b>：好几轮自动化点击都返回"成功"，但模拟器画面纹丝不动。</p>
+        <p class="pit-row"><b>根因</b>：游戏内部设计用的逻辑坐标（720×1280）和模拟器真实设备坐标（如 390×844）是两套体系，一直在用错的那套坐标点。</p>
+        <p class="pit-row"><b>修复</b>：用 <code>wx.getWindowInfo()</code> 查出真实设备尺寸和安全区，换算出正确的真机坐标再点。</p>
+      </div>
+    </div>
+
+    <div class="pitfall">
+      <div class="pit-idx">10</div>
+      <div>
+        <p class="pit-title">备案表单截图不能重复</p>
+        <p class="pit-row"><b>问题</b>：第一次提交后被要求"每张截图都不能一样"。</p>
+        <p class="pit-row"><b>根因</b>：图省事把同几张模拟器截图复用在了场景 / 玩法 / 系统功能等不同字段里。</p>
+        <p class="pit-row"><b>修复</b>：重新完整打一遍关卡，截了十张互不相同的真实游戏画面，每个字段配一张专属的。</p>
+      </div>
+    </div>
+
+  </section>
+
+  <svg class="squiggle" viewBox="0 0 780 18" preserveAspectRatio="none">
+    <path d="M0,9 C60,16 100,2 160,9 C220,16 260,2 320,9 C380,16 420,2 480,9 C540,16 580,2 640,9 C700,16 740,2 780,9" />
+  </svg>
+
+  <section id="next">
+    <div class="section-head"><span class="section-num">04</span><h2>后续注意事项</h2></div>
+    <p class="section-note">还没做完、或者以后容易再踩一次的事。</p>
+    <ul class="todo-list">
+      <li><span><b>抖音小游戏 / TikTok 小程序</b>还没开始适配——等微信这条线走通、模式验证过之后，照抄 core / adapters / platforms 这套架构。</span></li>
+      <li><span><b>正式 upload 发布体验版</b>由使用者自己决定时机手动触发，不要放进任何自动化流程。</span></li>
+      <li><span><b>完整合规链条</b>（企业主体、软著、版号 / 游戏备案等）可能还没走完，跟进后续进展。</span></li>
+      <li><span><b>手动打开微信开发者工具看不到项目</b>时，记得手动"导入项目"一次，把项目登记进开发者工具自己的项目列表。</span></li>
+      <li><span><b>改了 core / adapters 任何一处</b>，记得重跑 <code>python3 scripts/build.py</code> 同步 Web 和小游戏两个产物；改了音效参数记得重跑 <code>scripts/gen-audio.mjs</code>。</span></li>
+      <li><span>继续保持<b>"官方文档优先"</b>的调研习惯——遇到"这个工具/平台怎么用"这类事实性问题，先查官网再下结论。</span></li>
+      <li><span>以后再往游戏里加装饰性文案或彩蛋文字，记得留意<b>别再踩广告法绝对化用语</b>（"第一""最""唯一"之类）的坑。</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>大鹅的美食 · 项目笔记</span>
+    <span>由 Claude Code 协助整理于多次工作会话</span>
+  </footer>
+
+</div>

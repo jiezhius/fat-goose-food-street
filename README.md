@@ -53,7 +53,7 @@ assets/      本地美术参考，不进仓库
 | 手的形状 | `drawHand()`——**就三条线**，没有轮廓也没有填充。手在屏幕上不到 20px，画轮廓、填肉色都只会糊成一个团；小孩画手也就是在胳膊末端划拉三下。这里是**故意画得简单**的，别再往上加结构了 |
 | 小动物散步的路线和速度 | 顶部的 `STROLL` 常量（每只的起点、走哪边、走多远、速度、走还是蹦），调度在 `updateStroll()` / `strollState()`，画在 `render()` 里的 `strollAt()`。**下标跟 `strollAt(0..3)` 的调用一一对应，换位置只改 x/dir/dist，别整行搬动** |
 | 头发 | `drawGirl()` 里的 `ctrl`（马尾走向）和 `tailW`（粗细曲线）。`smoothSpine()` 把控制点插成平滑曲线，`ribbon()` 加粗成发束，`offsetSpine()` 再借同一套法线画里面那几道竖发丝。**照着原稿来的**：马尾从后脑勺底部垂到腰线、几乎等宽到末端才收尖，是留白的；深的是头，用一道道横线涂满。别改成高马尾 |
-| 裙子上的"筱"、旁边那句"世界第一漂" | `handwrite()`，调用点分别在 `drawGirl()` 和 `render()` 里 |
+| 裙子上的"筱"、旁边那句随机涂鸦文案 | `handwrite()`，调用点在 `drawGirl()`；涂鸦文案的候选池是 `DOODLE_TEXTS`（每次进游戏随机挑一句，避免用"世界第一"这类广告法限制的绝对化用语） |
 | 街边的猫兔龟和瓢虫 | `drawCat/drawRabbit/drawTurtle/drawLadybug`，摆位置在 `render()` 里 |
 | 哪一关上哪几样图案 | `levelTypes()` + `TYPE_ORDER` |
 
