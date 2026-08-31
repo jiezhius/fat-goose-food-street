@@ -1227,6 +1227,12 @@ function strollState(idx) {
 }
 
 
+// 她自己写在旁边的一句话——每次进游戏随机挑一句。原稿写的是"世界第一漂"，
+// 但"世界第一"属于广告法明确限制的绝对化用语，审核大概率按关键词命中打回，
+// 换成几句不带绝对化用语、但还是那股得意劲儿的小涂鸦。
+const DOODLE_TEXTS = ['今天也要元气满满', '闻香而来', '偷偷馋一口', '美食侦探在此'];
+const doodleText = DOODLE_TEXTS[Math.floor(Math.random() * DOODLE_TEXTS.length)];
+
 // ==================== 音效：事件名 -> Platform.audio.play(name) ====================
 // 具体怎么发声完全交给平台适配层；core 只负责"这个动作该配哪个音效名"。
 const sfx = {
@@ -1733,8 +1739,8 @@ function render() {
   }
   drawGirl(ctx, state.aim, state.recoil);
 
-  // 她自己写在旁边的一句话
-  handwrite(ctx, '世界第一漂', 542, 1116, 30, 4242, { rot: -0.09, alpha: .6 });
+  // 她自己写在旁边的一句话——见文件顶部 DOODLE_TEXTS，每次进游戏随机挑一句
+  handwrite(ctx, doodleText, 542, 1116, 30, 4242, { rot: -0.09, alpha: .6 });
   roughPath(ctx, [[452, 1146], [490, 1140], [530, 1148], [572, 1140], [612, 1147]], 4243, { width: 1.6, passes: 1, alpha: .35 });
 
   // 街边看热闹的小动物：站着的时候各自用不同频率轻轻起伏，别整齐划一地一起动
