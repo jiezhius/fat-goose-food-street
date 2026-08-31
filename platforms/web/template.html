@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#e8e2d6">
+<title>大鹅的美食</title>
+<style>
+  :root {
+    --paper: #f6f3ec;
+    --ink: #3a3a3a;
+    --ink-soft: #6f6a60;
+    --accent: #c9603f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 50% 20%, #e7e0d1, #c9c0ae);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Xingkai SC", "Hiragino Sans GB", -apple-system, sans-serif;
+    color: var(--ink);
+    user-select: none;
+  }
+  /* 舞台固定 720x1280 逻辑比例，整体等比缩放；子元素一律用 em，跟随 stage 字号缩放 */
+  #stage {
+    position: relative;
+    width: min(100vw, 56.25vh);
+    height: min(177.78vw, 100vh);
+    font-size: min(3.333vw, 1.875vh);
+    box-shadow: 0 1em 3em rgba(60, 50, 35, .35);
+    overflow: hidden;
+  }
+  @supports (height: 100svh) {
+    #stage { width: min(100vw, 56.25svh); height: min(177.78vw, 100svh); font-size: min(3.333vw, 1.875svh); }
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .layer { position: absolute; inset: 0; }
+
+  /* ---------- HUD ---------- */
+  #hud { pointer-events: none; padding: .6em .8em 0; }
+  .hud-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .stat { text-align: center; line-height: 1.05; min-width: 4em; }
+  .stat .label { display: block; font-size: .7em; color: var(--ink-soft); letter-spacing: .05em; }
+  .stat b { font-size: 1.35em; font-weight: 700; }
+  .hud-sub { text-align: center; font-size: .78em; color: var(--ink-soft); margin-top: .1em; height: 1.2em; }
+  .hud-sub.warn { color: var(--accent); font-weight: 700; }
+  .hud-btns { position: absolute; right: .8em; bottom: 1em; display: flex; gap: .4em; pointer-events: auto; }
+  .ibtn {
+    font: inherit; font-size: .85em; line-height: 1;
+    width: 2.2em; height: 2.2em; padding: 0;
+    background: rgba(255,255,255,.55); color: var(--ink);
+    border: .1em solid var(--ink);
+    border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%;
+    cursor: pointer;
+  }
+  .ibtn:active { transform: translateY(.1em); }
+
+  /* ---------- 屏幕 / 弹窗 ---------- */
+  .screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(246, 243, 236, .82);
+    backdrop-filter: blur(2px);
+    text-align: center; padding: 2em;
+  }
+  .screen.hidden { display: none; }
+  .card {
+    background: rgba(255,255,255,.72);
+    border: .12em solid var(--ink);
+    /* 经典“手绘框”圆角把戏：四角半径不对称 */
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    padding: 1.6em 1.8em;
+    max-width: 20em;
+    box-shadow: .2em .3em 0 rgba(58,58,58,.12);
+  }
+  h1 { margin: 0 0 .1em; font-size: 2.6em; letter-spacing: .08em; font-weight: 700; }
+  .sub { margin: 0 0 1.2em; font-size: .85em; color: var(--ink-soft); line-height: 1.7; }
+  h2 { margin: 0 0 .3em; font-size: 1.8em; }
+  .lines { font-size: .95em; line-height: 1.9; margin: .6em 0 1.2em; }
+  .lines .big { font-size: 1.6em; font-weight: 700; }
+  .btn {
+    font: inherit; font-size: 1.05em;
+    padding: .5em 1.6em; margin: .25em;
+    background: rgba(255,255,255,.7); color: var(--ink);
+    border: .12em solid var(--ink);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    cursor: pointer;
+  }
+  .btn.primary { background: #f7d9a8; }
+  .btn:active { transform: translate(.06em, .1em); }
+  .btn.small { font-size: .8em; padding: .4em 1em; }
+  .hint { font-size: .75em; color: var(--ink-soft); margin-top: 1em; line-height: 1.7; }
+  @media (prefers-reduced-motion: reduce) { .btn:active, .ibtn:active { transform: none; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="720" height="1280"></canvas>
+
+  <div id="hud" class="layer">
+    <div class="hud-row">
+      <div class="stat"><span class="label" data-i18n="score">分数</span><b id="uiScore">0</b></div>
+      <div class="stat"><span class="label" data-i18n="level">关卡</span><b id="uiLevel">1</b></div>
+      <div class="stat"><span class="label" data-i18n="best">最高分</span><b id="uiBest">0</b></div>
+    </div>
+    <div class="hud-sub" id="uiPush"></div>
+    <div class="hud-btns">
+      <button id="btnSound" class="ibtn" title="sound">🔊</button>
+      <button id="btnLang" class="ibtn" title="language">EN</button>
+      <button id="btnPause" class="ibtn" title="pause">⏸</button>
+    </div>
+  </div>
+
+  <div id="screenTitle" class="layer screen">
+    <div class="card">
+      <h1 data-i18n="title">大鹅的美食</h1>
+      <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
+      <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
+      <p class="hint" data-i18n="howto">按住拖动瞄准，松手发射</p>
+    </div>
+  </div>
+
+  <div id="screenDialog" class="layer screen hidden">
+    <div class="card">
+      <h2 id="dlgTitle">过关啦</h2>
+      <div class="lines" id="dlgBody"></div>
+      <button id="btnMain" class="btn primary">下一关</button>
+      <button id="btnRetry" class="btn">重来</button>
+      <div><button id="btnHome" class="btn small" data-i18n="home">回标题</button></div>
+    </div>
+  </div>
+</div>
+
+<script><!--BUILD:GAME_SCRIPT--></script>
+</body>
+</html>

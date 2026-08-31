@@ -1,138 +1,4 @@
-<!doctype html>
-<html lang="zh">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#e8e2d6">
-<title>大鹅的美食</title>
-<style>
-  :root {
-    --paper: #f6f3ec;
-    --ink: #3a3a3a;
-    --ink-soft: #6f6a60;
-    --accent: #c9603f;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: radial-gradient(circle at 50% 20%, #e7e0d1, #c9c0ae);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Xingkai SC", "Hiragino Sans GB", -apple-system, sans-serif;
-    color: var(--ink);
-    user-select: none;
-  }
-  /* 舞台固定 720x1280 逻辑比例，整体等比缩放；子元素一律用 em，跟随 stage 字号缩放 */
-  #stage {
-    position: relative;
-    width: min(100vw, 56.25vh);
-    height: min(177.78vw, 100vh);
-    font-size: min(3.333vw, 1.875vh);
-    box-shadow: 0 1em 3em rgba(60, 50, 35, .35);
-    overflow: hidden;
-  }
-  @supports (height: 100svh) {
-    #stage { width: min(100vw, 56.25svh); height: min(177.78vw, 100svh); font-size: min(3.333vw, 1.875svh); }
-  }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  .layer { position: absolute; inset: 0; }
-
-  /* ---------- HUD ---------- */
-  #hud { pointer-events: none; padding: .6em .8em 0; }
-  .hud-row { display: flex; justify-content: space-between; align-items: flex-start; }
-  .stat { text-align: center; line-height: 1.05; min-width: 4em; }
-  .stat .label { display: block; font-size: .7em; color: var(--ink-soft); letter-spacing: .05em; }
-  .stat b { font-size: 1.35em; font-weight: 700; }
-  .hud-sub { text-align: center; font-size: .78em; color: var(--ink-soft); margin-top: .1em; height: 1.2em; }
-  .hud-sub.warn { color: var(--accent); font-weight: 700; }
-  .hud-btns { position: absolute; right: .8em; bottom: 1em; display: flex; gap: .4em; pointer-events: auto; }
-  .ibtn {
-    font: inherit; font-size: .85em; line-height: 1;
-    width: 2.2em; height: 2.2em; padding: 0;
-    background: rgba(255,255,255,.55); color: var(--ink);
-    border: .1em solid var(--ink);
-    border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%;
-    cursor: pointer;
-  }
-  .ibtn:active { transform: translateY(.1em); }
-
-  /* ---------- 屏幕 / 弹窗 ---------- */
-  .screen {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(246, 243, 236, .82);
-    backdrop-filter: blur(2px);
-    text-align: center; padding: 2em;
-  }
-  .screen.hidden { display: none; }
-  .card {
-    background: rgba(255,255,255,.72);
-    border: .12em solid var(--ink);
-    /* 经典“手绘框”圆角把戏：四角半径不对称 */
-    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    padding: 1.6em 1.8em;
-    max-width: 20em;
-    box-shadow: .2em .3em 0 rgba(58,58,58,.12);
-  }
-  h1 { margin: 0 0 .1em; font-size: 2.6em; letter-spacing: .08em; font-weight: 700; }
-  .sub { margin: 0 0 1.2em; font-size: .85em; color: var(--ink-soft); line-height: 1.7; }
-  h2 { margin: 0 0 .3em; font-size: 1.8em; }
-  .lines { font-size: .95em; line-height: 1.9; margin: .6em 0 1.2em; }
-  .lines .big { font-size: 1.6em; font-weight: 700; }
-  .btn {
-    font: inherit; font-size: 1.05em;
-    padding: .5em 1.6em; margin: .25em;
-    background: rgba(255,255,255,.7); color: var(--ink);
-    border: .12em solid var(--ink);
-    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    cursor: pointer;
-  }
-  .btn.primary { background: #f7d9a8; }
-  .btn:active { transform: translate(.06em, .1em); }
-  .btn.small { font-size: .8em; padding: .4em 1em; }
-  .hint { font-size: .75em; color: var(--ink-soft); margin-top: 1em; line-height: 1.7; }
-  @media (prefers-reduced-motion: reduce) { .btn:active, .ibtn:active { transform: none; } }
-</style>
-</head>
-<body>
-<div id="stage">
-  <canvas id="game" width="720" height="1280"></canvas>
-
-  <div id="hud" class="layer">
-    <div class="hud-row">
-      <div class="stat"><span class="label" data-i18n="score">分数</span><b id="uiScore">0</b></div>
-      <div class="stat"><span class="label" data-i18n="level">关卡</span><b id="uiLevel">1</b></div>
-      <div class="stat"><span class="label" data-i18n="best">最高分</span><b id="uiBest">0</b></div>
-    </div>
-    <div class="hud-sub" id="uiPush"></div>
-    <div class="hud-btns">
-      <button id="btnSound" class="ibtn" title="sound">🔊</button>
-      <button id="btnLang" class="ibtn" title="language">EN</button>
-      <button id="btnPause" class="ibtn" title="pause">⏸</button>
-    </div>
-  </div>
-
-  <div id="screenTitle" class="layer screen">
-    <div class="card">
-      <h1 data-i18n="title">大鹅的美食</h1>
-      <p class="sub" data-i18n="tagline">瞄准、发射，三个一样的就能吃掉！</p>
-      <button id="btnStart" class="btn primary" data-i18n="start">开 始</button>
-      <p class="hint" data-i18n="howto">按住拖动瞄准，松手发射</p>
-    </div>
-  </div>
-
-  <div id="screenDialog" class="layer screen hidden">
-    <div class="card">
-      <h2 id="dlgTitle">过关啦</h2>
-      <div class="lines" id="dlgBody"></div>
-      <button id="btnMain" class="btn primary">下一关</button>
-      <button id="btnRetry" class="btn">重来</button>
-      <div><button id="btnHome" class="btn small" data-i18n="home">回标题</button></div>
-    </div>
-  </div>
-</div>
-
-<script>
+/* 本文件由 scripts/build.py 生成，不要手改——改 core/ 或 adapters/wechat.js 再重新跑脚本。 */
 /* =========================================================================
    《大鹅的美食》核心逻辑 —— 平台无关，Web / 微信 / 抖音 / TikTok 共用同一份。
    不直接碰 document/window/localStorage：需要宿主能力的地方都通过 Platform
@@ -1896,211 +1762,407 @@ function boot(platform) {
 
 
 /* =========================================================================
-   Web 平台适配层：给 core/game-core.js 提供它要的 Platform 接口，
-   外加 Web 独有的 DOM 版 UI（标题页/HUD/弹框都是真实的 DOM 元素，不是画布画的）。
-   这个文件只服务 Web 版，微信/抖音/TikTok 各自有自己的 adapters/*.js。
+   给"没有 DOM 的平台"用的画布版 UI —— 微信/抖音/TikTok 小游戏都用这份。
+   Web 版不引入这个文件：它的标题页/HUD/弹框是真实的 DOM 元素，样式在
+   platforms/web/template.html 的 <style> 里，不在这。
+
+   跟 core/game-core.js 共享同一个顶层作用域（build.py 直接拼在一起），
+   可以直接用 state / t / I18N / pencil / roughPath / circlePts / W / H /
+   PENCIL 这些 core 里已经定义好的东西，不用再 import 一遍。
+
+   核心思路：state.screen 是 'title' | 'playing' | 'dialog' | 'paused'，
+   每帧照着这个字段把该画的东西画在游戏画面上面；点击命中检测用同一套
+   按钮描述表，画哪几个按钮、点哪算点中，两边共用一份数据，不会画歪。
    ========================================================================= */
 
-// ==================== 音效：WebAudio 现场合成（原样保留） ====================
-let audioCtx = null;
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
+const UI_PAPER = 'rgba(246,243,236,.94)';
+const UI_INK = PENCIL;          // '#3a3a3a'，跟游戏画风统一
+const UI_INK_SOFT = '#6f6a60';
+const UI_ACCENT = '#c9603f';
+const UI_BTN_PRIMARY = '#f7d9a8';
+const UI_BTN_PLAIN = 'rgba(255,255,255,.75)';
+const UI_FONT = '"Kaiti SC","STKaiti","KaiTi","Xingkai SC",sans-serif';
+
+// ---- 一块手绘感的圆角卡片：矩形四角轻微抖动，别画成正儿八经的电脑矩形 ----
+function cardPts(x, y, w, h, seed) {
+  const rnd = mulberry32(seed);
+  const j = () => (rnd() - 0.5) * 5;
+  return [
+    [x + j(), y + j()], [x + w + j(), y + j()],
+    [x + w + j(), y + h + j()], [x + j(), y + h + j()],
+  ];
 }
-function playTone(freq, startTime, duration, type = 'sine', volume = 0.14, endFreq = null) {
+function drawCard(ctx, x, y, w, h, seed) {
+  const pts = cardPts(x, y, w, h, seed);
+  ctx.save();
+  ctx.fillStyle = UI_PAPER;
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  roughPath(ctx, pts, seed + 1, { closed: true, width: 2.6, passes: 2 });
+}
+
+// ---- 按钮：一份数据同时喂给"怎么画"和"点哪算点中" ----
+function drawButton(ctx, btn) {
+  const pts = cardPts(btn.x, btn.y, btn.w, btn.h, btn.seed || 500);
+  ctx.save();
+  ctx.fillStyle = btn.primary ? UI_BTN_PRIMARY : UI_BTN_PLAIN;
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  roughPath(ctx, pts, (btn.seed || 500) + 1, { closed: true, width: 2.2, passes: 1 });
+  ctx.save();
+  ctx.font = `${btn.fontSize || 30}px ${UI_FONT}`;
+  ctx.fillStyle = UI_INK;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2 + 2);
+  ctx.restore();
+}
+function hitButton(btn, x, y) {
+  return x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h;
+}
+
+// ---- 右下角那一排：暂停/语言/声音。照抄 H5 版 .hud-btns 的位置算法——
+// #stage 那套响应式字号换算下来 1em = 24px（720 宽 / 30），H5 里是
+// right:.8em / bottom:1em / 2.2em 见方 / 按钮间距 .4em，HTML 顺序是
+// 声音、语言、暂停，flex 从左排到右，所以最靠右边的是暂停。
+// 除了标题页，跟 HUD 数字一样哪个屏幕都在——声音/语言随时能点，
+// 暂停图标常驻但只有 state.screen==='playing' 时点了才有效
+// （跟 Web 版 el.btnPause 的判断逻辑一致，见 adapters/web.js）。
+function hudButtons() {
+  if (state.screen === 'title') return [];
+  const w = 53, gap = 10, right = 19, bottom = 24;
+  const y = H - bottom - w;
+  return [
+    { id: 'sound', x: W - right - w * 3 - gap * 2, y, w, h: w, label: state.muted ? '🔇' : '🔊', fontSize: 24, seed: 40 },
+    { id: 'lang', x: W - right - w * 2 - gap, y, w, h: w, label: state.lang === 'zh' ? 'EN' : '中', fontSize: 20, seed: 41 },
+    { id: 'pause', x: W - right - w, y, w, h: w, label: '❚❚', fontSize: 20, seed: 42 },
+  ];
+}
+
+// ---- 每个屏幕状态下，当前应该有哪些按钮（画和点共用这一份） ----
+function currentButtons() {
+  if (state.screen === 'title') {
+    return [{ id: 'start', x: 210, y: 700, w: 300, h: 84, label: t('start'), primary: true, fontSize: 34, seed: 10 }];
+  }
+  if (state.screen === 'playing') {
+    return hudButtons();
+  }
+  if (state.screen === 'dialog' || state.screen === 'paused') {
+    const btns = [];
+    if (state.lastResult === 'pause') {
+      btns.push({ id: 'main', x: 210, y: 660, w: 300, h: 76, label: t('resume'), primary: true, fontSize: 28, seed: 30 });
+      btns.push({ id: 'retry', x: 210, y: 748, w: 300, h: 68, label: t('retry'), primary: false, fontSize: 26, seed: 31 });
+      btns.push({ id: 'home', x: 260, y: 826, w: 200, h: 56, label: t('home'), primary: false, fontSize: 22, seed: 32 });
+    } else if (state.lastResult === 'win') {
+      btns.push({ id: 'main', x: 210, y: 700, w: 300, h: 76, label: t('next'), primary: true, fontSize: 28, seed: 30 });
+      btns.push({ id: 'retry', x: 210, y: 788, w: 300, h: 68, label: t('retry'), primary: false, fontSize: 26, seed: 31 });
+    } else {
+      btns.push({ id: 'main', x: 210, y: 700, w: 300, h: 76, label: t('again'), primary: true, fontSize: 28, seed: 30 });
+      btns.push({ id: 'home', x: 260, y: 788, w: 200, h: 56, label: t('home'), primary: false, fontSize: 22, seed: 32 });
+    }
+    return btns.concat(hudButtons());
+  }
+  return [];
+}
+
+// ---- HUD：分数/关卡/最高分 + 还有几发上新菜。
+// 食物网格从 GRID_Y=92 开始，H5 版这块区域实测也是卡在 92px 左右
+// （#hud 的 padding-top + 数字行 + push 提示行，按 1em=24px 换算出来），
+// 这里三行文字全部收进 88px 以内，留 4px 安全间隙，别再跟第一排食物打架。
+function drawHud(ctx) {
+  ctx.save();
+  ctx.textBaseline = 'top';
+  const row = [['score', t('score'), state.score, 60, 'left'], ['level', t('level'), state.level, 360, 'center'], ['best', t('best'), state.best, 660, 'right']];
+  row.forEach(([, label, val, x, align]) => {
+    ctx.textAlign = align;
+    ctx.fillStyle = UI_INK_SOFT; ctx.font = `15px ${UI_FONT}`;
+    ctx.fillText(label, x, 14);
+    ctx.fillStyle = UI_INK; ctx.font = `26px ${UI_FONT}`;
+    ctx.fillText(String(val), x, 32);
+  });
+  if (state.screen === 'playing') {
+    const soon = state.shotsLeft <= 1;
+    ctx.textAlign = 'center'; ctx.font = `17px ${UI_FONT}`;
+    ctx.fillStyle = soon ? UI_ACCENT : UI_INK_SOFT;
+    ctx.fillText(soon ? t('pushSoon') : t('push')(state.shotsLeft), 360, 66);
+  }
+  ctx.restore();
+}
+
+// ---- 标题页：卡片 + 大标题 + 副标题 + 操作提示（开始按钮走 currentButtons()）----
+function drawTitleScreen(ctx) {
+  drawCard(ctx, 100, 480, 520, 380, 1);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = UI_INK;
+  ctx.font = `52px ${UI_FONT}`;
+  ctx.fillText(t('title'), 360, 570);
+  ctx.fillStyle = UI_INK_SOFT;
+  ctx.font = `22px ${UI_FONT}`;
+  ctx.fillText(t('tagline'), 360, 620);
+  ctx.font = `18px ${UI_FONT}`;
+  wrapText(ctx, t('howto'), 360, 812, 440, 26);
+  ctx.restore();
+}
+
+// ---- 弹框：半透明遮罩 + 卡片 + 标题 + 正文（按钮走 currentButtons()）----
+function dialogText() {
+  if (state.lastResult === 'pause') return { title: t('paused'), body: [`${t('total')} ${state.score}`] };
+  if (state.lastResult === 'win') return { title: t('clear'), body: [`${t('lvScore')} ${state.levelScore}`, `${t('total')} ${state.score}`] };
+  return { title: t('over'), body: [`${t('total')} ${state.score}`, state.isBest ? t('newBest') : `${t('best')} ${state.best}`] };
+}
+function drawDialog(ctx) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(70,64,54,.35)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  drawCard(ctx, 110, 420, 500, 460, 2);
+  const { title, body } = dialogText();
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.fillStyle = UI_INK;
+  ctx.font = `34px ${UI_FONT}`;
+  ctx.fillText(title, 360, 480);
+  ctx.font = `24px ${UI_FONT}`;
+  body.forEach((line, i) => ctx.fillText(line, 360, 560 + i * 40));
+  ctx.restore();
+}
+
+// 简单的按空格自动换行——够用就行，不追求排版精细
+function wrapText(ctx, text, cx, y, maxW, lineH) {
+  const words = text.split('');
+  let line = '', lines = [];
+  words.forEach(ch => {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = ch; }
+    else line = test;
+  });
+  if (line) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, cx, y + i * lineH));
+}
+
+const UICanvas = {
+  draw(ctx) {
+    if (state.screen === 'title') drawTitleScreen(ctx);
+    if (state.screen === 'playing') drawHud(ctx);
+    if (state.screen === 'dialog' || state.screen === 'paused') { drawHud(ctx); drawDialog(ctx); }
+    currentButtons().forEach(b => drawButton(ctx, b));
+  },
+  // 命中检测：返回按钮 id（'start'/'main'/'retry'/'home'/'pause'）或 null
+  hitTest(x, y) {
+    const hit = currentButtons().find(b => hitButton(b, x, y));
+    return hit ? hit.id : null;
+  },
+};
+
+
+/* =========================================================================
+   微信小游戏适配层：给 core/game-core.js + core/ui-canvas.js 提供 Platform 接口。
+   全部走 wx.* API，没有 document/window。音效第一版是空函数——WebAudio 那套
+   合成写法这个环境不保证支持，先不让它卡住主链路，以后单独补（见 README）。
+
+   触摸坐标换算是这一版里最不确定的地方：canvas 铺满整个屏幕，没有 CSS 那层
+   缩放可以借，只能自己用 windowWidth/windowHeight 换算成游戏的逻辑坐标系
+   （720x1280）。第一次在真机/模拟器里跑，如果瞄准方向不对，大概率就是这里
+   要调——不是玄学，照着实际触点位置改这几行换算就行。
+   ========================================================================= */
+
+// ==================== 全局错误兜底：出错直接画在屏幕上 ====================
+// 小游戏没有 DOM，也没有官方支持的方式能让我（Claude）远程读到控制台报错——
+// 查过官方文档确认了：cli auto / miniprogram-automator 这套自动化是给"小程序"
+// 设计的，小游戏这边没有等价能力。折中办法：把 wx.onError 捕获到的报错直接
+// 画在屏幕上，出问题时你截一张模拟器/真机的图给我，报错文字就在画面里，
+// 不用再切到调试控制台去复制文字。注册得越早越好——放在文件最前面，
+// 这样后面任何代码（包括下面这段 safeCall、包括 core 的 boot() 全过程）
+// 抛出的未捕获异常都能被兜住。只捕获得到"没被 try/catch 吞掉"的错误，
+// 这是唯一的局限。
+const bootErrors = [];
+let errCanvas = null;
+function showBootError(msg) {
+  msg = String(msg);
+  if (bootErrors.includes(msg)) return;   // 同一条错误每帧反复抛，只记一次，别刷屏
+  bootErrors.push(msg);
+  if (bootErrors.length > 8) bootErrors.shift();
+  try {
+    // 优先复用游戏正在用的那块画布（这样报错会直接盖住当前画面，最显眼）；
+    // 如果 boot() 还没跑到、canvas 变量还没赋值，就自己建一块——
+    // wx.createCanvas() 目前观察下来第一次调用返回的就是那块共享屏幕画布。
+    const c = (typeof canvas !== 'undefined' && canvas) ? canvas : (errCanvas || (errCanvas = wx.createCanvas()));
+    const g = c.getContext('2d');
+    const w = c.width || 720, h = c.height || 1280;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#2a1414';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ffb4b4';
+    g.font = '24px monospace';
+    g.textBaseline = 'top';
+    let y = 30;
+    g.fillText('运行时报错（截图发给 Claude）：', 24, y); y += 40;
+    bootErrors.forEach(m => {
+      (m.match(/.{1,32}/g) || [m]).forEach(line => { g.fillText(line, 24, y); y += 30; });
+      y += 16;
+    });
+  } catch (e) { /* 连错误提示都画不出来，只能认了 */ }
+}
+wx.onError(res => showBootError((res && res.message) || res));
+
+// wx.getSystemInfoSync() 这几年被拆成了 getWindowInfo/getDeviceInfo/getAppBaseInfo。
+// 不再拿它当兜底——它在 jsbridge 还没就绪的这个时间点同步调用，本身就会往控制台
+// 打一条 "jsbridge not ready" 的错误（这是 runtime 自己打的日志，不是能 try/catch
+// 住的 JS 异常），新 API 已经够用，没必要为了兜底反而制造一条噪音报错。
+function safeCall(fn, fallback) {
+  try { return (typeof fn === 'function' ? fn() : null) || fallback; }
+  catch (e) { return fallback; }
+}
+// 每次都重新查，绝不缓存成脚本加载时的常量——真机上出过这样的坑：窗口/安全区
+// 中途变了（比如玩着玩着展开了「真机调试」悬浮工具栏），fitCanvas() 虽然会被
+// resize 事件重新触发，但如果这里读到的还是脚本启动那一刻的旧快照，算出来的
+// 缩放/居中就跟客户端实际分配的新画布尺寸对不上，画面跟着错位、部分内容
+// 延伸到安全区外面去了。宁可每次多查两个同步 API，也不要图省事缓存这个。
+function computeSys() {
+  const winInfo = safeCall(wx.getWindowInfo, {});
+  const appInfo = safeCall(wx.getAppBaseInfo, {});
+  // windowWidth/windowHeight 不保证排除刘海屏顶部、Home Indicator 底部手势条这些
+  // 物理遮挡区域——之前就是拿它们做等比缩放居中，内容延伸到了这些区域，被设备边框/
+  // 系统手势条部分盖住，画面底部露出一条"乱七八糟"的缝。真正该用的是 safeArea，
+  // 官方就是为这个场景设计的字段。safeArea 缺失时退回整个窗口（等于没有安全区）。
+  const safeArea = winInfo.safeArea || null;
+  return {
+    windowWidth: winInfo.windowWidth || 375,
+    windowHeight: winInfo.windowHeight || 667,
+    safeLeft: safeArea ? safeArea.left : 0,
+    safeTop: safeArea ? safeArea.top : 0,
+    safeWidth: safeArea ? safeArea.width : (winInfo.windowWidth || 375),
+    safeHeight: safeArea ? safeArea.height : (winInfo.windowHeight || 667),
+    pixelRatio: winInfo.pixelRatio || 2,
+    language: appInfo.language || 'zh',
+  };
+}
+
+function touchToXY(touch) {
+  return screenToLogical(touch.clientX, touch.clientY);
+}
+
+// ==================== 音效：预生成的 WAV 文件，见 scripts/gen-audio.mjs ====================
+// Web 版是现场用 WebAudio 振荡器合成的，小游戏这边环境不保证支持那套写法，
+// 干脆把每个音效离线渲染成 WAV（官方文档确认 mp3/aac/wav 三种格式两个平台都
+// 完全支持），运行时就是简单地播放文件。useWebAudioImplement: true 是官方
+// 给"短促、频繁触发的音效"的建议配置，比默认的 InnerAudio 驱动性能更好。
+// 实例按需创建、创建后复用——官方文档明确建议复用，不要每次播放都新建。
+const audioPool = {};
+function getAudioInstance(key) {
+  if (!audioPool[key]) {
+    const ctx = wx.createInnerAudioContext({ useWebAudioImplement: true });
+    ctx.src = 'audio/' + key + '.wav';
+    audioPool[key] = ctx;
+  }
+  return audioPool[key];
+}
+function playSfx(key) {
   if (state.muted) return;
   try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator(), gain = ctx.createGain();
-    osc.type = type;
-    const t0 = ctx.currentTime + startTime;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t0 + duration);
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(volume, t0 + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(t0); osc.stop(t0 + duration + 0.02);
-  } catch (e) { /* 音频不可用就静默跳过 */ }
+    const ctx = getAudioInstance(key);
+    ctx.stop();   // 先停再放：同一个音效被快速连续触发（比如连发）时，
+                   // 不能因为上一次还没播完就把这次触发吞掉。
+    ctx.play();
+  } catch (e) { /* 音频初始化失败也不能卡住主链路，静默跳过 */ }
 }
-// 事件名 -> 具体怎么合成。core 里的 sfx 只发事件名，这里才是真正发声的地方。
-const WEB_SOUNDS = {
-  shoot: () => playTone(300, 0, 0.09, 'triangle', 0.10, 620),
-  stick: () => playTone(220, 0, 0.07, 'square', 0.07),
-  pop: (opt = {}) => {
-    const base = 660 * Math.pow(1.12, Math.min(opt.chain || 0, 6));
-    [0, 0.07, 0.14].forEach((d, i) => playTone(base * (1 + i * 0.25), d, 0.14, 'triangle', 0.11));
+
+const WeChatPlatform = {
+  createCanvas() {
+    const c = wx.createCanvas();
+    return c;
   },
-  drop: () => playTone(500, 0, 0.35, 'sine', 0.09, 120),
-  push: () => playTone(160, 0, 0.22, 'sawtooth', 0.07, 110),
-  win: () => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, i * 0.12, 0.2, 'triangle', 0.13)),
-  lose: () => [392, 330, 262].forEach((f, i) => playTone(f, i * 0.16, 0.3, 'sine', 0.12)),
-};
-
-// ==================== DOM 版 UI ====================
-const $ = id => document.getElementById(id);
-const el = {
-  hud: $('hud'), score: $('uiScore'), level: $('uiLevel'), best: $('uiBest'), push: $('uiPush'),
-  title: $('screenTitle'), dialog: $('screenDialog'),
-  dlgTitle: $('dlgTitle'), dlgBody: $('dlgBody'), btnMain: $('btnMain'), btnRetry: $('btnRetry'), btnHome: $('btnHome'),
-  btnSound: $('btnSound'), btnLang: $('btnLang'), btnPause: $('btnPause'),
-};
-
-function updateHud() {
-  el.score.textContent = state.score;
-  el.level.textContent = state.level;
-  el.best.textContent = state.best;
-  const soon = state.shotsLeft <= 1;
-  el.push.textContent = state.screen === 'playing' ? (soon ? t('pushSoon') : t('push')(state.shotsLeft)) : '';
-  el.push.classList.toggle('warn', soon);
-}
-
-function applyLang() {
-  document.documentElement.lang = state.lang;
-  document.querySelectorAll('[data-i18n]').forEach(n => {
-    const v = I18N[state.lang][n.dataset.i18n];
-    if (typeof v === 'string') n.innerHTML = v;
-  });
-  el.btnLang.textContent = state.lang === 'zh' ? 'EN' : '中';
-  document.title = t('title');
-  updateHud();
-}
-
-function showScreen(name) {
-  state.screen = name;
-  el.title.classList.toggle('hidden', name !== 'title');
-  el.dialog.classList.toggle('hidden', name !== 'dialog');
-  el.hud.style.display = name === 'title' ? 'none' : '';
-  updateHud();
-}
-
-// core 的 levelClear()/gameOver() 已经把 state 改好了（分数、lastResult、isBest），
-// 这里只管把 DOM 弹框的文字填上、显示出来——对应 Platform.onDialog 这个钩子。
-function renderDialog(result) {
-  if (result === 'win') {
-    el.dlgTitle.textContent = t('clear');
-    el.dlgBody.innerHTML = `${t('lvScore')} <span class="big">${state.levelScore}</span><br>${t('total')} ${state.score}`;
-    el.btnMain.textContent = t('next');
-    el.btnRetry.textContent = t('retry');
-    el.btnRetry.style.display = '';
-    el.btnHome.parentElement.style.display = 'none';
-  } else {
-    el.dlgTitle.textContent = t('over');
-    el.dlgBody.innerHTML = `${t('total')} <span class="big">${state.score}</span><br>${state.isBest ? t('newBest') : t('best') + ' ' + state.best}`;
-    el.btnMain.textContent = t('again');
-    el.btnRetry.style.display = 'none';
-    el.btnHome.parentElement.style.display = '';
-  }
-  showScreen('dialog');
-}
-
-// ==================== Platform 接口实现 ====================
-const WebPlatform = {
-  createCanvas() { return document.getElementById('game'); },
   createOffscreenCanvas(w, h) {
-    const c = document.createElement('canvas');
+    // 查过官方文档确认了：wx.createOffscreenCanvas 是小程序（miniprogram）的 API，
+    // 小游戏（minigame）环境里没有这个函数。小游戏这边的规则是 wx.createCanvas()——
+    // 第一次调用返回的是显示在屏幕上的主画布，boot() 里已经调过一次了；
+    // 这里是第二次调用，官方规则下会返回一块独立的离屏画布，互不干扰。
+    const c = wx.createCanvas();
     c.width = w; c.height = h;
     return c;
   },
-  getViewport() { return { width: canvas.clientWidth, height: canvas.clientHeight, pixelRatio: window.devicePixelRatio || 1 }; },   // 没有安全区概念，不传 safeWidth 等字段，fitCanvas() 里会自动退化成安全区=整个窗口
-  onResize(fn) { window.addEventListener('resize', fn); },
-  reduceMotion() { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; },
-  systemLang() { return navigator.language || 'zh'; },
+  getViewport() {
+    const sys = computeSys();   // 每次现查，理由见 computeSys() 上面那段注释
+    return {
+      width: sys.windowWidth, height: sys.windowHeight,
+      safeWidth: sys.safeWidth, safeHeight: sys.safeHeight, safeLeft: sys.safeLeft, safeTop: sys.safeTop,
+      pixelRatio: sys.pixelRatio || 1,
+    };
+  },
+  // 微信自己的 onWindowResize 不保证覆盖所有会让安全区变化的情况（比如真机调试
+  // 悬浮工具栏展开这类"客户端自己叠加 UI"的场景，未必算作一次 resize）——onShow
+  // 兜一层：从后台切回前台时也强制重新算一次，成本很低，覆盖了 resize 事件本身
+  // 就没触发的那些场景。
+  onResize(fn) {
+    if (wx.onWindowResize) wx.onWindowResize(fn);
+    if (wx.onShow) wx.onShow(fn);
+  },
+  reduceMotion() { return false; },   // 小游戏动效本来就轻，第一版不做这个开关
+  systemLang() { return computeSys().language || 'zh'; },
   storage: {
-    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} },
+    get(key) { try { return wx.getStorageSync(key); } catch (e) { return null; } },
+    set(key, val) { try { wx.setStorageSync(key, val); } catch (e) {} },
   },
   audio: {
-    play(name, opt) { const fn = WEB_SOUNDS[name]; if (fn) fn(opt); },
-    unlock() { getAudioCtx(); },
+    // pop 的音高随连击数变调（Web 版是现场改振荡器频率），静态文件是按 chain
+    // 分档预渲染好的 pop_0.wav ~ pop_6.wav，这里只需要选对文件名。
+    play(name, opt) {
+      if (name === 'pop') playSfx('pop_' + Math.min((opt && opt.chain) || 0, 6));
+      else playSfx(name);
+    },
+    unlock() {},   // 小游戏没有浏览器那种"用户交互前不能播放音频"的限制，不用做解锁
   },
-  onDialog: renderDialog,
-  onStateChange: updateHud,   // 分数/关卡/剩余发数变化时，core 用这个钩子通知 DOM 刷新
-  // 没有 ui 字段：Web 版的标题/HUD/弹框是独立的 DOM 元素，core 的渲染循环
-  // 用不着在画布上再画一遍。
+  ui: UICanvas,     // 没有 DOM，标题/HUD/弹框都在画布上画，见 core/ui-canvas.js
 };
 
-// ==================== 输入：鼠标/触摸走 pointer 事件，键盘只有 Web 有 ====================
-// 包成函数、在 boot() 之后再调用——core 的 `canvas` 变量要等 boot() 里
-// Platform.createCanvas() 跑完才有值，这里在文件顶层就直接用 canvas.addEventListener
-// 会拿到 undefined。
-function eventToXY(e) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (e.clientX - rect.left) / rect.width * W,
-    y: (e.clientY - rect.top) / rect.height * H,
-  };
-}
-function wireInput() {
-  canvas.addEventListener('pointerdown', e => {
-    if (state.screen !== 'playing') return;
-    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-    const { x, y } = eventToXY(e);
-    onPointerDown(x, y);
-  });
-  canvas.addEventListener('pointermove', e => {
-    if (state.screen !== 'playing') return;
-    const { x, y } = eventToXY(e);
-    onPointerMove(x, y, e.pointerType === 'mouse');
-  });
-  canvas.addEventListener('pointerup', e => {
-    const { x, y } = eventToXY(e);
-    onPointerUp(x, y);
-  });
-  canvas.addEventListener('pointercancel', () => onPointerCancel());
-  window.addEventListener('keydown', e => {
-    if (state.screen !== 'playing') return;
-    if (e.key === 'ArrowLeft') state.aim = Math.max(-MAX_ANGLE, state.aim - 0.06);
-    else if (e.key === 'ArrowRight') state.aim = Math.min(MAX_ANGLE, state.aim + 0.06);
-    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); shoot(); }
-  });
-}
+// ==================== 触摸：先问 UI 层有没有点中按钮，没有再当瞄准手势处理 ====================
+wx.onTouchStart(e => {
+  const { x, y } = touchToXY(e.touches[0]);
+  const hit = UICanvas.hitTest(x, y);
+  if (hit) { handleUIAction(hit); return; }
+  onPointerDown(x, y);
+});
+wx.onTouchMove(e => {
+  const { x, y } = touchToXY(e.touches[0]);
+  onPointerMove(x, y, false);
+});
+wx.onTouchEnd(e => {
+  // touchend 的 touches 是空的，坐标要从 changedTouches 拿
+  const { x, y } = touchToXY(e.changedTouches[0]);
+  onPointerUp(x, y);
+});
+wx.onTouchCancel(() => onPointerCancel());
 
-// ==================== 按钮 ====================
-$('btnStart').addEventListener('click', () => { WebPlatform.audio.unlock(); startLevel(1); state.score = 0; showScreen('playing'); });
-el.btnMain.addEventListener('click', () => {
-  if (state.lastResult === 'pause') showScreen('playing');                                    // 继续玩
-  else if (state.lastResult === 'win') { startLevel(state.level + 1); showScreen('playing'); } // 下一关
-  else { state.score = 0; startLevel(1); showScreen('playing'); }                              // 再试一次
-});
-el.btnRetry.addEventListener('click', () => {          // 重玩本关（输了的时候这个键是藏起来的）
-  if (state.lastResult === 'win') state.score -= state.levelScore;
-  startLevel(state.level);
-  showScreen('playing');
-});
-el.btnHome.addEventListener('click', () => { startLevel(1); state.score = 0; showScreen('title'); });
-el.btnPause.addEventListener('click', () => {
-  if (state.screen !== 'playing') return;
-  state.lastResult = 'pause';
-  el.dlgTitle.textContent = t('paused');
-  el.dlgBody.innerHTML = `${t('total')} <span class="big">${state.score}</span>`;
-  el.btnMain.textContent = t('resume');
-  el.btnRetry.textContent = t('retry');
-  el.btnRetry.style.display = '';
-  el.btnHome.parentElement.style.display = '';
-  el.dialog.classList.remove('hidden');
-  el.hud.style.display = '';
-  state.screen = 'paused';        // update() 里会停住，render 继续
-});
-el.btnSound.addEventListener('click', () => {
-  state.muted = !state.muted;
-  el.btnSound.textContent = state.muted ? '🔇' : '🔊';
-  save('muted', state.muted ? 1 : 0);
-});
-el.btnLang.addEventListener('click', () => {
-  state.lang = state.lang === 'zh' ? 'en' : 'zh';
-  save('lang', state.lang);
-  applyLang();
-});
+// ==================== 按钮命中之后具体做什么，跟 adapters/web.js 里那几个
+// click handler 是同一套业务逻辑，只是这边没有 DOM 元素可以操作 ====================
+function handleUIAction(id) {
+  if (id === 'start') { WeChatPlatform.audio.unlock(); startLevel(1); state.score = 0; state.screen = 'playing'; return; }
+  if (id === 'pause') {
+    if (state.screen !== 'playing') return;
+    state.lastResult = 'pause';
+    state.screen = 'paused';
+    return;
+  }
+  if (id === 'main') {
+    if (state.lastResult === 'pause') { state.screen = 'playing'; }
+    else if (state.lastResult === 'win') { startLevel(state.level + 1); state.screen = 'playing'; }
+    else { state.score = 0; startLevel(1); state.screen = 'playing'; }
+    return;
+  }
+  if (id === 'retry') {
+    if (state.lastResult === 'win') state.score -= state.levelScore;
+    startLevel(state.level);
+    state.screen = 'playing';
+    return;
+  }
+  if (id === 'home') { startLevel(1); state.score = 0; state.screen = 'title'; return; }
+  if (id === 'sound') { state.muted = !state.muted; save('muted', state.muted ? 1 : 0); return; }
+  if (id === 'lang') { state.lang = state.lang === 'zh' ? 'en' : 'zh'; save('lang', state.lang); return; }
+}
 
 // ==================== 启动 ====================
-boot(WebPlatform);
-wireInput();
-el.btnSound.textContent = state.muted ? '🔇' : '🔊';
-applyLang();
-showScreen('title');
+boot(WeChatPlatform);
 
-</script>
-</body>
-</html>

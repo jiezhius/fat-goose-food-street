@@ -1,0 +1,15 @@
+{
+  "description": "大鹅的美食 —— 微信小游戏工程",
+  "packOptions": { "ignore": [], "include": [] },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "postcss": false,
+    "minified": false
+  },
+  "compileType": "game",
+  "libVersion": "trial",
+  "appid": "wx836de99ef169b727",
+  "projectname": "da-e-de-mei-shi",
+  "condition": {}
+}
