@@ -7,6 +7,7 @@
     python3 scripts/build.py          # 生成全部平台
     python3 scripts/build.py web      # 只生成 Web 版 index.html
     python3 scripts/build.py wechat   # 只生成微信小游戏的 game.js
+    python3 scripts/build.py douyin   # 只生成抖音小游戏的 game.js
 
 改完 core/ 或某个 adapters/*.js 之后必须重新跑这个脚本，index.html 和
 platforms/*/game.js 都是生成产物，不要手改（手改了下次跑这个脚本会被覆盖）。
@@ -52,7 +53,19 @@ def build_wechat():
     write(Path('platforms', 'wechat-minigame', 'game.js'), out)
 
 
-TARGETS = {'web': build_web, 'wechat': build_wechat}
+def build_douyin():
+    print('构建抖音小游戏 -> platforms/douyin-minigame/game.js')
+    core = read('core', 'game-core.js')
+    ui = read('core', 'ui-canvas.js')
+    douyin = read('adapters', 'douyin.js')
+    out = '\n'.join([
+        '/* 本文件由 scripts/build.py 生成，不要手改——改 core/ 或 adapters/douyin.js 再重新跑脚本。 */',
+        core, '', ui, '', douyin, '',
+    ])
+    write(Path('platforms', 'douyin-minigame', 'game.js'), out)
+
+
+TARGETS = {'web': build_web, 'wechat': build_wechat, 'douyin': build_douyin}
 
 if __name__ == '__main__':
     args = sys.argv[1:] or list(TARGETS.keys())

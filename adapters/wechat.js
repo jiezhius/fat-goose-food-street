@@ -39,7 +39,7 @@ function showBootError(msg) {
     g.font = '24px monospace';
     g.textBaseline = 'top';
     let y = 30;
-    g.fillText('运行时报错（截图发给 Claude）：', 24, y); y += 40;
+    g.fillText('运行时报错（请截图反馈给开发者）：', 24, y); y += 40;
     bootErrors.forEach(m => {
       (m.match(/.{1,32}/g) || [m]).forEach(line => { g.fillText(line, 24, y); y += 30; });
       y += 16;

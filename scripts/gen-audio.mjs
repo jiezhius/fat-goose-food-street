@@ -17,8 +17,13 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = join(__dirname, '..', 'platforms', 'wechat-minigame', 'audio');
-mkdirSync(OUT_DIR, { recursive: true });
+// 两个小游戏平台格式完全一样（44.1kHz WAV 两边都支持），生成一份、两边都写，
+// 别再维护两份重复的音频文件。
+const OUT_DIRS = [
+  join(__dirname, '..', 'platforms', 'wechat-minigame', 'audio'),
+  join(__dirname, '..', 'platforms', 'douyin-minigame', 'audio'),
+];
+OUT_DIRS.forEach(d => mkdirSync(d, { recursive: true }));
 
 const SR = 44100;
 
@@ -122,9 +127,9 @@ for (let chain = 0; chain <= 6; chain++) {
 let total = 0;
 for (const [name, fn] of Object.entries(SOUNDS)) {
   const buf = fn();
-  const path = join(OUT_DIR, name + '.wav');
-  const bytes = writeWav(path, buf);
+  const bytes = writeWav(join(OUT_DIRS[0], name + '.wav'), buf);
+  for (let i = 1; i < OUT_DIRS.length; i++) writeWav(join(OUT_DIRS[i], name + '.wav'), buf);
   total += bytes;
   console.log(`  ${name}.wav  ${(bytes / 1024).toFixed(1)} KB`);
 }
-console.log(`完成，共 ${Object.keys(SOUNDS).length} 个文件，合计 ${(total / 1024).toFixed(1)} KB -> ${OUT_DIR}`);
+console.log(`完成，共 ${Object.keys(SOUNDS).length} 个文件，合计 ${(total / 1024).toFixed(1)} KB -> ${OUT_DIRS.join(', ')}`);

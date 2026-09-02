@@ -2,5 +2,7 @@
 node_modules/
 dist/
 .claude/settings.local.json
+# 微信开发者工具的本机 IDE 偏好，因人而异，不进仓库
+project.private.config.json
 # assets/ 正常进仓库；只有小朋友的手绘原稿不公开托管（著作权顾虑）
 assets/original-drawing.jpg

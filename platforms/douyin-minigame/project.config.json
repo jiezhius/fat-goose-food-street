@@ -1,0 +1,8 @@
+{
+  "description": "大鹅的美食 —— 抖音小游戏工程",
+  "setting": {
+    "es6": true
+  },
+  "appid": "在这里填入你的抖音小游戏 AppID（资质审批通过后去 developer.open-douyin.com 控制台创建应用拿到）",
+  "projectname": "da-e-de-mei-shi"
+}
