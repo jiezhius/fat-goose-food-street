@@ -325,7 +325,7 @@
 
       <div class="stage">
         <h3>建自动化验证工作流</h3>
-        <p>用 wechatide 的 MCP/CLI 能力自己操作模拟器、自己截图、自己看控制台报错，
+        <p>写了一套脚本调用 wechatide 命令行工具，自动操作模拟器、截图、读控制台报错，
         不用每次都等真机反馈才能定位问题。</p>
       </div>
 
@@ -383,9 +383,9 @@
       </div>
 
       <div class="card">
-        <h3>官方文档优先于搜索摘要 / 本地猜测</h3>
-        <p>被两次抓到调研不充分就下结论（MCP vs CLI、Claude Code 的 MCP 配置位置），
-        已经写进跨会话的长期记忆，往后调研先查官网。</p>
+        <h3>官方文档优先于凭记忆猜测</h3>
+        <p>被平台 API 坑过不止一次（离屏画布接口、系统信息读取方式都凭印象写错过），
+        后来定下规矩：不确定的平台能力，先翻官方文档，别凭经验想当然。</p>
       </div>
 
       <div class="card">
@@ -403,7 +403,7 @@
 
   <section id="pitfalls">
     <div class="section-head"><span class="section-num">03</span><h2>踩过的坑</h2></div>
-    <p class="section-note">十个真实踩过的坑，按"问题 / 根因 / 修复"记录，供以后排查类似问题时直接参考。</p>
+    <p class="section-note">九个真实踩过的坑，按"问题 / 根因 / 修复"记录，供以后排查类似问题时直接参考。</p>
 
     <div class="pitfall">
       <div class="pit-idx">01</div>
@@ -478,16 +478,6 @@
     <div class="pitfall">
       <div class="pit-idx">08</div>
       <div>
-        <p class="pit-title">调研不够充分就下结论</p>
-        <p class="pit-row"><b>问题</b>：MCP 和 CLI 哪个更合适、Claude Code 的 MCP 配置该写在哪，两次都给出了武断结论。</p>
-        <p class="pit-row"><b>根因</b>：分别依赖了网络搜索的转述摘要、和本地文件"没提到"这种沉默信号去反推结论，没有第一时间查官方文档。</p>
-        <p class="pit-row"><b>修复</b>：读官方文档确认真实答案，并把"官方文档优先"写进跨会话长期记忆。</p>
-      </div>
-    </div>
-
-    <div class="pitfall">
-      <div class="pit-idx">09</div>
-      <div>
         <p class="pit-title">自动化点击坐标空间搞混</p>
         <p class="pit-row"><b>问题</b>：好几轮自动化点击都返回"成功"，但模拟器画面纹丝不动。</p>
         <p class="pit-row"><b>根因</b>：游戏内部设计用的逻辑坐标（720×1280）和模拟器真实设备坐标（如 390×844）是两套体系，一直在用错的那套坐标点。</p>
@@ -496,7 +486,7 @@
     </div>
 
     <div class="pitfall">
-      <div class="pit-idx">10</div>
+      <div class="pit-idx">09</div>
       <div>
         <p class="pit-title">备案表单截图不能重复</p>
         <p class="pit-row"><b>问题</b>：第一次提交后被要求"每张截图都不能一样"。</p>
@@ -527,7 +517,7 @@
 
   <footer>
     <span>大鹅的美食 · 项目笔记</span>
-    <span>由 Claude Code 协助整理于多次工作会话</span>
+    <span>整理于多次开发会话</span>
   </footer>
 
 </div>
