@@ -19,6 +19,9 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // 两个小游戏平台格式完全一样（44.1kHz WAV 两边都支持），生成一份、两边都写，
 // 别再维护两份重复的音频文件。
+// TapTap 的"H5 小游戏"就是一个跑在真实网页环境里的普通页面（不是微信/抖音那种
+// 无 DOM 的沙盒 VM），构建时直接复用 adapters/web.js 那套 WebAudio 现场合成，
+// 不需要这份预生成 WAV，这里不给它输出目录。
 const OUT_DIRS = [
   join(__dirname, '..', 'platforms', 'wechat-minigame', 'audio'),
   join(__dirname, '..', 'platforms', 'douyin-minigame', 'audio'),
